@@ -57,6 +57,7 @@ the [releases page](https://github.com/01Cindyy/Penguin-player/releases/latest).
 ### Arch Linux (AUR)
 
 ```sh
+Coming soon as AUR signups are currently closed. Please install manually for now.
 yay -S penguin-player      # or paru, or any AUR helper
 ```
 
