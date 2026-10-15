@@ -1,0 +1,66 @@
+{
+  "name": "Frost",
+  "author": "Penguin Player",
+  "description": "Calm blue-grey with frosted blue accents. Gentle, low-contrast light and dark variants.",
+  "version": "1.0",
+  "scheme": "any",
+  "colors": {
+    "destructive": "#b04654",
+    "success": "#33735c",
+    "warning": "#dcb466"
+  },
+  "light": {
+    "accent": "#36648d",
+    "accent_fg": "#ffffff",
+    "window_bg": "#edf1f5",
+    "window_fg": "#34404d",
+    "view_bg": "#f6f8fa",
+    "view_fg": "#34404d",
+    "headerbar_bg": "#e4eaf0",
+    "headerbar_fg": "#34404d",
+    "sidebar_bg": "#e2e8ef",
+    "sidebar_fg": "#36424f",
+    "card_bg": "#f9fbfc",
+    "card_fg": "#34404d",
+    "popover_bg": "#f9fbfc",
+    "popover_fg": "#34404d",
+    "dialog_bg": "#f0f3f7",
+    "dialog_fg": "#34404d",
+    "player_bar_bg": "#e4eaf0",
+    "player_bar_fg": "#34404d",
+    "border": "rgba(52, 64, 77, 0.12)",
+    "hires_badge": "#745717"
+  },
+  "dark": {
+    "accent": "#88b0d3",
+    "accent_fg": "#18202a",
+    "window_bg": "#20262e",
+    "window_fg": "#c8d1db",
+    "view_bg": "#1c2229",
+    "view_fg": "#c8d1db",
+    "headerbar_bg": "#252c35",
+    "headerbar_fg": "#c8d1db",
+    "sidebar_bg": "#232a33",
+    "sidebar_fg": "#c3ccd6",
+    "card_bg": "#29313b",
+    "card_fg": "#c8d1db",
+    "popover_bg": "#2b333e",
+    "popover_fg": "#c8d1db",
+    "dialog_bg": "#262d36",
+    "dialog_fg": "#c8d1db",
+    "player_bar_bg": "#262e37",
+    "player_bar_fg": "#ced7e0",
+    "border": "rgba(200, 209, 219, 0.10)",
+    "hires_badge": "#d8bc78"
+  },
+  "shape": {
+    "window_radius": 14,
+    "panel_radius": 12,
+    "cover_radius": 10,
+    "button_radius": 999,
+    "spacing": 12
+  },
+  "effects": {
+    "cover_shadow": 0.5
+  }
+}

@@ -1,0 +1,22 @@
+[package]
+name = "mp-core"
+description = "Shared model, settings and playback queue logic (no GUI or audio dependencies)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+directories.workspace = true
+fastrand.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+tempfile.workspace = true

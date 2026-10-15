@@ -1,0 +1,31 @@
+# cargo-about's settings for THIRD-PARTY-LICENSES.txt (see make-packages.sh).
+
+# Every crate built into the program on Linux, including those that only run while it
+# builds: some of them compile C libraries into it (Lua comes from lua-src).
+targets = ["x86_64-unknown-linux-gnu"]
+ignore-dev-dependencies = true
+ignore-build-dependencies = false
+# The app's own crates, which are under its MIT licence.
+private = { ignore = true }
+
+# The licences the dependencies may use. A new one fails the build until it is checked
+# and added here. A crate offered under a choice of licences is used under the first
+# one listed, so the simplest come first.
+accepted = [
+    "MIT",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Unlicense",
+    "CC0-1.0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "Unicode-3.0",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
+]
+
+# Crates whose licence files cargo-about needs help with.
+workarounds = ["ring", "rustls"]

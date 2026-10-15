@@ -1,0 +1,224 @@
+/* Albums, album, artists and artist pages.
+ * Appended after style.css, so it can use every variable and class defined there. */
+
+:root {
+  /* Under a card's art while the pointer lifts it. */
+  --mp-cover-hover-shadow: 0 10px 24px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* Card grids
+ *
+ * Cards fill their grid column. The grid is inset so that the art lines up with the
+ * page gutter (the grid's own child padding and the card's padding make up the rest). */
+
+gridview.mp-card-grid {
+  padding: 6px calc(var(--mp-spacing) * 2.5 - 9px) calc(var(--mp-spacing) * 2.5);
+  background-color: transparent;
+}
+
+.mp-cards.mp-narrow gridview.mp-card-grid {
+  padding-left: calc(var(--mp-spacing) * 1.5 - 9px);
+  padding-right: calc(var(--mp-spacing) * 1.5 - 9px);
+}
+
+/* Cards sit in a grid's item (CardGrid) or a flat button (CardShelf, e.g. on the
+ * search page). Feedback is drawn on the card rather than on either host. */
+gridview.mp-card-grid > child,
+gridview.mp-card-grid > child:hover,
+gridview.mp-card-grid > child:active,
+gridview.mp-card-grid > child:selected,
+button.mp-card-button,
+button.mp-card-button:hover,
+button.mp-card-button:active {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+button.mp-card-button {
+  padding: 0;
+  border-radius: var(--mp-panel-radius);
+}
+
+gridview.mp-card-grid > child:focus:focus-visible,
+button.mp-card-button:focus:focus-visible {
+  outline-color: transparent;
+}
+
+.mp-album-card,
+.mp-artist-card {
+  padding: 6px 6px 10px;
+  border-radius: var(--mp-panel-radius);
+  outline: 0 solid transparent;
+  outline-offset: 2px;
+  transition: background-color 200ms ease-out, outline-color 200ms ease-out,
+    outline-offset 200ms ease-out;
+}
+
+.mp-album-card:hover,
+.mp-artist-card:hover {
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+gridview.mp-card-grid > child:active > .mp-album-card,
+gridview.mp-card-grid > child:active > .mp-artist-card,
+button.mp-card-button:active > .mp-album-card,
+button.mp-card-button:active > .mp-artist-card {
+  background-color: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+gridview.mp-card-grid > child:focus:focus-visible > .mp-album-card,
+gridview.mp-card-grid > child:focus:focus-visible > .mp-artist-card,
+button.mp-card-button:focus:focus-visible > .mp-album-card,
+button.mp-card-button:focus:focus-visible > .mp-artist-card {
+  outline: 2px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+  outline-offset: -2px;
+}
+
+/* The art lifts a little under the pointer and settles when pressed. */
+.mp-card-art {
+  margin-bottom: 10px;
+}
+
+.mp-card-art .mp-cover,
+.mp-card-art avatar {
+  transition: transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 250ms ease-out;
+}
+
+.mp-album-card:hover .mp-card-art .mp-cover,
+.mp-artist-card:hover .mp-card-art .mp-cover,
+.mp-artist-card:hover .mp-card-art avatar {
+  transform: translateY(-3px);
+  box-shadow: var(--mp-cover-hover-shadow);
+}
+
+gridview.mp-card-grid > child:active .mp-card-art .mp-cover,
+gridview.mp-card-grid > child:active .mp-card-art avatar,
+button.mp-card-button:active .mp-card-art .mp-cover,
+button.mp-card-button:active .mp-card-art avatar {
+  transform: translateY(-1px) scale(0.985);
+}
+
+/* The play button fades in over the art while the card is hovered. */
+button.mp-card-play {
+  min-width: 40px;
+  min-height: 40px;
+  margin: 10px;
+  padding: 0;
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms ease-out, transform 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    background-image 150ms ease-out;
+}
+
+.mp-album-card:hover button.mp-card-play,
+.mp-artist-card:hover button.mp-card-play {
+  opacity: 1;
+  transform: none;
+}
+
+.mp-album-card:hover button.mp-card-play:hover,
+.mp-artist-card:hover button.mp-card-play:hover {
+  background-image: image(color-mix(in srgb, currentColor 12%, transparent));
+  transform: scale(1.06);
+}
+
+.mp-album-card:hover button.mp-card-play:active,
+.mp-artist-card:hover button.mp-card-play:active {
+  background-image: image(color-mix(in srgb, currentColor 20%, transparent));
+  transform: scale(0.96);
+}
+
+.mp-album-card .mp-album-title,
+.mp-artist-card .mp-artist-name {
+  margin-top: 1px;
+}
+
+.mp-album-title,
+.mp-artist-name {
+  font-weight: 600;
+}
+
+.mp-album-artist,
+.mp-artist-stats {
+  margin-top: 2px;
+  font-size: 90%;
+  font-feature-settings: "tnum";
+}
+
+/* Initials stand in for artists without art: on the placeholder tile (style.css),
+ * in the full accent colour, with the same shadow as covers. */
+avatar.mp-artist-avatar,
+.mp-artist-avatar > avatar {
+  color: var(--accent-color);
+  box-shadow: var(--mp-cover-shadow);
+}
+
+/* Albums page */
+
+button.mp-sort-button {
+  padding-left: 10px;
+  padding-right: 10px;
+  border-radius: var(--mp-pill-radius);
+}
+
+/* Album and artist pages: sections under the hero header */
+
+.mp-detail-sections {
+  padding-bottom: calc(var(--mp-spacing) * 2);
+}
+
+.mp-detail-section {
+  margin-top: calc(var(--mp-spacing) * 1.5);
+}
+
+.mp-detail-section > .mp-section-header {
+  padding: 0 calc(var(--mp-spacing) * 2.5) 6px;
+}
+
+.mp-detail-sections.mp-narrow .mp-detail-section > .mp-section-header {
+  padding-left: calc(var(--mp-spacing) * 1.5);
+  padding-right: calc(var(--mp-spacing) * 1.5);
+}
+
+/* Sections grow with the page, so their grids need no room to scroll into. */
+.mp-detail-section gridview.mp-card-grid {
+  padding-bottom: 6px;
+}
+
+/* Hero header details: the artist link, quality badges and the "more" menu */
+
+.mp-artist-link label {
+  font-size: 115%;
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.mp-quality-badges {
+  margin-top: 2px;
+}
+
+.mp-format-badge.mp-quality-badge {
+  padding: 2px 8px;
+  border-radius: calc(var(--mp-small-radius) * 2 / 3);
+  font-size: 78%;
+  letter-spacing: 0.3px;
+}
+
+/* Album tracks, grouped by disc */
+
+.mp-album-tracks columnview.mp-track-table > listview > header {
+  padding-top: 18px;
+  padding-bottom: 4px;
+}
+
+.mp-disc-header {
+  padding: 0 6px;
+}
+
+.mp-disc-header image {
+  color: color-mix(in srgb, currentColor 55%, transparent);
+}

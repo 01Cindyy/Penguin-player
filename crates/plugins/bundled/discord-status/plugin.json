@@ -1,0 +1,58 @@
+{
+  "name": "Discord Status",
+  "version": "1.0.0",
+  "author": "Penguin Player",
+  "description": "Shows what you’re listening to on your Discord profile while Discord is open on this computer.",
+  "api_version": 2,
+  "privacy": "Discord shows the details you choose in this plugin’s settings to people who can see your profile, while Discord is open on this computer.",
+  "permissions": {
+    "discord": true
+  },
+  "settings": [
+    {
+      "key": "title",
+      "type": "boolean",
+      "title": "Song Title",
+      "default": true
+    },
+    {
+      "key": "artist",
+      "type": "boolean",
+      "title": "Artist",
+      "default": true
+    },
+    {
+      "key": "album",
+      "type": "boolean",
+      "title": "Album",
+      "subtitle": "Shown when pointing at the picture",
+      "default": true
+    },
+    {
+      "key": "progress",
+      "type": "boolean",
+      "title": "Progress",
+      "subtitle": "How far into the song you are",
+      "default": true
+    },
+    {
+      "key": "paused",
+      "type": "boolean",
+      "title": "Paused Songs",
+      "subtitle": "Keep showing a song while it’s paused",
+      "default": false
+    },
+    {
+      "key": "status",
+      "type": "choice",
+      "title": "Status",
+      "subtitle": "What member lists show after “Listening to”",
+      "default": "name",
+      "choices": [
+        { "value": "name", "title": "Penguin Player" },
+        { "value": "artist", "title": "Artist" },
+        { "value": "title", "title": "Song Title" }
+      ]
+    }
+  ]
+}

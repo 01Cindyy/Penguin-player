@@ -1,0 +1,38 @@
+/* Sunset: what theme.json can't express. Colours refer to variables wherever they can,
+   so the same rules work in light and dark mode. */
+
+/* A rose colour of the theme's own, lighter in dark mode. */
+:root {
+  --sunset-rose: #c2456b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sunset-rose: #e0798f;
+  }
+}
+
+/* A warm glow fading in from the left of the now-playing bar. */
+.mp-player-bar {
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--accent-bg-color) 14%, transparent), transparent 65%);
+}
+
+/* The quality badge sits on that glow, so in light mode its text is a shade deeper. */
+@media (prefers-color-scheme: light) {
+  .mp-player-bar {
+    --mp-hires-badge-color: #6c4d11;
+    --mp-lossless-badge-color: #8e3916;
+  }
+}
+
+/* A gradient play button, from the accent to rose. */
+.mp-play-button {
+  background-image: linear-gradient(135deg, var(--accent-bg-color), color-mix(in srgb, var(--accent-bg-color) 60%, var(--sunset-rose)));
+  color: var(--accent-fg-color);
+}
+
+/* Bolder page titles. */
+.mp-page-title {
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}

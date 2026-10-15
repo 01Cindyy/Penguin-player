@@ -1,0 +1,68 @@
+THIRD-PARTY SOFTWARE IN PENGUIN PLAYER
+
+Penguin Player is licensed under the MIT licence, in the LICENSE file beside this
+one. It is built with the open source software below, each under the licence listed
+with it. Thank you to everyone who made it.
+
+The files under the Mozilla Public License 2.0 (the Symphonia audio decoders among
+them) are used without changes. Their source code is available from each crate's
+page on https://crates.io and from the repositories listed below.
+
+
+BUILT INTO THE CRATES
+
+Lua 5.4, the language plugins are written in, is compiled into the program from the
+lua-src crate:
+
+    Copyright (C) 1994-2026 Lua.org, PUC-Rio.
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of
+    this software and associated documentation files (the "Software"), to deal in
+    the Software without restriction, including without limitation the rights to
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software is furnished to do so,
+    subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+    FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+    AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+    WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+SQLite, which stores the music library, is compiled in from the libsqlite3-sys
+crate. SQLite is in the public domain: https://sqlite.org/copyright.html
+
+Opus, which decodes Opus audio, is compiled in from the opusic-sys crate; its licence
+is the one listed for that crate below.
+
+
+ICONS
+
+The icons inside the app, except its own penguin, are icons from the Adwaita icon
+theme 51.0 by the GNOME Project (https://www.gnome.org), unchanged apart from their
+names. They are used under the Creative Commons Attribution-Share Alike 3.0 United
+States License (https://creativecommons.org/licenses/by-sa/3.0/us/), or at your
+option the GNU Lesser General Public License version 3
+(https://www.gnu.org/licenses/lgpl-3.0.html).
+
+
+OVERVIEW
+{{#each overview}}
+    {{{name}}}: {{count}} {{#if (eq count 1)}}crate{{else}}crates{{/if}}
+{{/each}}
+{{#each licenses}}
+
+================================================================================
+{{{name}}}
+
+Used by:
+{{#each used_by}}
+    {{{crate.name}}} {{{crate.version}}}{{#if crate.repository}}  {{{crate.repository}}}{{/if}}
+{{/each}}
+
+{{{text}}}
+{{/each}}

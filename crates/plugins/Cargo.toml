@@ -1,0 +1,29 @@
+[package]
+name = "mp-plugins"
+description = "Sandboxed Lua plugin host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+mp-core.workspace = true
+async-channel.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+mlua = { version = "0.12", features = ["lua54", "vendored", "serde"] }
+memchr = "2"
+ureq = "3"
+
+# Only for switching the plugin thread to the "C" locale (see `src/sandbox/locale.rs`).
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile.workspace = true

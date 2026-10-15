@@ -1,0 +1,631 @@
+/* Structural styles for Penguin Player.
+ *
+ * Loaded above libadwaita and below the active theme, which overrides any of the
+ * --mp-* variables below (see docs/themes.md). Colours come from libadwaita's
+ * variables so every theme, light or dark, works without changes here.
+ *
+ * Spacing follows a 6px grid; --mp-spacing (12px) is the base unit for larger gaps.
+ */
+
+:root {
+  --mp-panel-radius: 12px;
+  --mp-cover-radius: 8px;
+  --mp-button-radius: 999px;
+  --mp-small-radius: 9px;
+  --mp-pill-radius: 999px;
+  --mp-spacing: 12px;
+  --mp-window-bg-color: var(--window-bg-color);
+  --mp-panel-bg-color: var(--sidebar-bg-color);
+  --mp-player-bar-bg-color: var(--headerbar-bg-color);
+  /* What the bar is painted with: its colour, made translucent by the transparency option. */
+  --mp-player-bar-surface: var(--mp-player-bar-bg-color);
+  --mp-player-bar-fg-color: var(--window-fg-color);
+  --mp-cover-shadow: 0 6px 18px rgba(0, 0, 0, 0.19), 0 1px 3px rgba(0, 0, 0, 0.11);
+  --mp-hires-badge-color: var(--warning-color);
+  --mp-lossless-badge-color: var(--accent-color);
+}
+
+/* Window structure */
+
+window.mp-main-window {
+  background-color: var(--mp-window-bg-color);
+}
+
+/* The queue panel becomes an overlay-pane when it floats over narrow windows. */
+.mp-library-split > .sidebar-pane,
+.mp-queue-split > .sidebar-pane,
+.mp-queue-split > .overlay-pane {
+  background-color: var(--mp-panel-bg-color);
+  color: var(--sidebar-fg-color);
+}
+
+/* libadwaita fades bars in unfocused windows; the player bar keeps its colours. */
+.mp-main-window toolbarview > .bottom-bar:backdrop > windowhandle {
+  filter: none;
+}
+
+.mp-search-entry {
+  min-height: 34px;
+  border-radius: var(--mp-pill-radius);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* The music folder warning is tinted like a warning rather than neutral grey. */
+banner.mp-folder-banner {
+  --banner-color: var(--warning-bg-color);
+}
+
+/* Sidebar */
+
+.mp-sidebar .navigation-sidebar {
+  padding-top: 0;
+}
+
+.mp-sidebar .navigation-sidebar > row > box {
+  padding: 0 6px;
+}
+
+.mp-sidebar .navigation-sidebar > row image {
+  color: color-mix(in srgb, currentColor 75%, transparent);
+  transition: color 200ms ease-out;
+}
+
+.mp-sidebar .navigation-sidebar > row:selected image {
+  color: var(--accent-color);
+}
+
+.mp-sidebar-count {
+  min-width: 24px;
+}
+
+.mp-sidebar-section {
+  padding: 18px 12px 6px 20px;
+}
+
+.mp-sidebar-add {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+
+.mp-sidebar-hint {
+  padding: 6px 20px 12px 20px;
+}
+
+.mp-sidebar-footer {
+  padding: 6px 8px 8px 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.mp-library-status.warning {
+  color: var(--warning-color);
+}
+
+.mp-sidebar.mp-icons-only .mp-sidebar-section {
+  padding: 12px 0 6px;
+}
+
+.mp-sidebar.mp-icons-only .mp-sidebar-footer {
+  padding: 6px 0 8px;
+}
+
+/* Edges dragged to resize the sidebar, the queue panel and the player bar: a faint
+ * accent line while hovered or dragged. */
+
+.mp-resize-handle {
+  transition: box-shadow 150ms ease-out;
+}
+
+.mp-resize-width {
+  min-width: 6px;
+}
+
+.mp-resize-height {
+  min-height: 6px;
+}
+
+.mp-resize-width:hover,
+.mp-resize-width.mp-dragging {
+  box-shadow: inset 2px 0 alpha(var(--accent-color), 0.6);
+}
+
+.mp-resize-width:dir(rtl):hover,
+.mp-resize-width.mp-dragging:dir(rtl) {
+  box-shadow: inset -2px 0 alpha(var(--accent-color), 0.6);
+}
+
+.mp-resize-height:hover,
+.mp-resize-height.mp-dragging {
+  box-shadow: inset 0 2px alpha(var(--accent-color), 0.6);
+}
+
+/* Page headers and filter chips */
+
+/* Pages share one gutter, 2.5 spacing units wide: the header text and the first
+ * column of a track list (inset by its margin plus the cell padding) line up on it.
+ * Narrow pages use 1.5 units. */
+.mp-page-header {
+  padding: calc(var(--mp-spacing) * 2) calc(var(--mp-spacing) * 2.5) calc(var(--mp-spacing) * 1.5);
+}
+
+.mp-page-header.mp-narrow {
+  padding: calc(var(--mp-spacing) * 1.5) calc(var(--mp-spacing) * 1.5) var(--mp-spacing);
+}
+
+.mp-page-title {
+  letter-spacing: -0.3px;
+}
+
+.mp-page-eyebrow {
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.mp-page-subtitle {
+  font-feature-settings: "tnum";
+}
+
+.mp-page-action {
+  padding: 6px 18px;
+  min-height: 24px;
+}
+
+/* The "…" menu next to the actions: a round button as tall as the pills. */
+.mp-page-menu-button > button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--mp-button-radius);
+}
+
+.mp-chip {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--mp-pill-radius);
+  font-size: 90%;
+  font-weight: 600;
+  background-color: color-mix(in srgb, currentColor 7%, transparent);
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.mp-chip:hover {
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.mp-chip:checked {
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+}
+
+.mp-chip:checked:hover {
+  background-image: image(color-mix(in srgb, currentColor 10%, transparent));
+}
+
+.mp-chip-divider {
+  min-height: 18px;
+  margin: 0 6px;
+}
+
+/* Section headings, with a "Show All" button at their end */
+
+.mp-section-header {
+  min-height: 34px;
+}
+
+.mp-section-title {
+  letter-spacing: -0.2px;
+}
+
+/* The label ends flush with the content; the hover pill reaches into the gutter. */
+button.mp-show-all {
+  min-height: 28px;
+  margin-right: -10px;
+  padding: 0 10px;
+  border-radius: var(--mp-pill-radius);
+  font-size: 90%;
+  font-weight: 600;
+  color: color-mix(in srgb, currentColor 70%, transparent);
+  transition: color 150ms ease-out, background-color 150ms ease-out;
+}
+
+button.mp-show-all:hover {
+  color: var(--accent-color);
+}
+
+/* Text that opens a page, such as an artist's name. The hover pill reaches past the
+ * text, so the text itself stays aligned with what is around it. */
+button.mp-link {
+  min-height: 0;
+  padding: 1px 5px;
+  margin: 0 -5px;
+  border-radius: calc(var(--mp-small-radius) * 2 / 3);
+}
+
+button.mp-link:hover label {
+  text-decoration-line: underline;
+}
+
+/* Track lists */
+
+/* Columns are sized from the column view's own width, so it is inset with margins:
+ * padding on its header or rows would push the last column out of view. */
+columnview.mp-track-table {
+  margin: 0 calc(var(--mp-spacing) * 2.5 - 6px);
+}
+
+.mp-track-list.mp-narrow columnview.mp-track-table {
+  margin: 0 calc(var(--mp-spacing) * 1.5 - 6px);
+}
+
+columnview.mp-track-table,
+columnview.mp-track-table > listview {
+  background-color: transparent;
+}
+
+columnview.mp-track-table > header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+columnview.mp-track-table > header > button {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+columnview.mp-track-table > listview > row {
+  border-radius: var(--mp-small-radius);
+  margin-bottom: 1px;
+  transition: background-color 150ms ease-out;
+}
+
+columnview.mp-track-table > listview > row > cell {
+  padding: 6px;
+}
+
+.mp-track-title {
+  font-weight: 500;
+}
+
+.mp-track-duration,
+.mp-track-number {
+  font-feature-settings: "tnum";
+}
+
+.mp-track-list .mp-playing .mp-track-title,
+.mp-playing-icon {
+  color: var(--accent-color);
+}
+
+/* Format badges */
+
+.mp-format-badge {
+  padding: 1px 6px;
+  border-radius: calc(var(--mp-small-radius) * 2 / 3);
+  font-size: 72%;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: color-mix(in srgb, currentColor 65%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.mp-format-badge.mp-lossless {
+  color: var(--mp-lossless-badge-color);
+  background-color: color-mix(in srgb, var(--mp-lossless-badge-color) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mp-lossless-badge-color) 30%, transparent);
+}
+
+.mp-format-badge.mp-hires {
+  color: var(--mp-hires-badge-color);
+  background-color: color-mix(in srgb, var(--mp-hires-badge-color) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mp-hires-badge-color) 35%, transparent);
+}
+
+/* Album art */
+
+.mp-cover {
+  border-radius: var(--mp-cover-radius);
+  box-shadow: var(--mp-cover-shadow);
+}
+
+.mp-cover.mp-cover-row {
+  border-radius: calc(var(--mp-small-radius) * 2 / 3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+}
+
+.mp-cover.mp-cover-large {
+  border-radius: calc(var(--mp-cover-radius) * 1.5);
+}
+
+/* Missing art. Artists without any show their initials on the same tile. AdwAvatar
+ * draws on an `avatar` node: the widget itself in older libadwaita, a child of it in
+ * newer versions. */
+.mp-cover.mp-cover-placeholder,
+avatar.mp-artist-avatar,
+.mp-artist-avatar > avatar {
+  background-image: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-bg-color) 28%, var(--view-bg-color)),
+    color-mix(in srgb, var(--accent-bg-color) 8%, var(--view-bg-color)));
+  color: color-mix(in srgb, var(--accent-color) 65%, transparent);
+}
+
+.mp-cover-playing-icon {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+}
+
+/* Artist images are round, whether a cover or an AdwAvatar. */
+.mp-artist-avatar,
+.mp-cover.mp-artist-avatar {
+  border-radius: 999px;
+}
+
+/* Queue panel */
+
+.mp-queue-panel {
+  background-color: var(--mp-panel-bg-color);
+}
+
+/* Now-playing bar */
+
+.mp-player-bar {
+  background-color: var(--mp-player-bar-surface);
+  color: var(--mp-player-bar-fg-color);
+  box-shadow: inset 0 1px var(--border-color);
+}
+
+.mp-player-bar-content {
+  padding: var(--mp-spacing) calc(var(--mp-spacing) * 1.5);
+}
+
+.mp-now-playing {
+  min-width: 180px;
+}
+
+.mp-cover-button {
+  padding: 0;
+  border-radius: var(--mp-cover-radius);
+}
+
+/* With nothing playing these are insensitive; the placeholder and dimmed "Not Playing"
+ * say enough without fading them further. */
+.mp-player-bar button.mp-cover-button:disabled,
+.mp-player-bar button.mp-link:disabled {
+  filter: none;
+}
+
+.mp-player-bar .mp-now-artist {
+  font-weight: 400;
+}
+
+/* GTK can leave a row of the old title's pixels behind when the song changes: it
+ * repaints where it thinks the text was, which can fall a pixel short of the letters.
+ * It repaints around a shadow by the shadow's size, so this invisible one makes it
+ * clear the whole area. Preferences rows change their text in place too. */
+.mp-player-bar .mp-now-title,
+.mp-player-bar .mp-now-artist,
+.mp-now-quality-details,
+.mp-now-playing-card label,
+.mp-now-playing-page label,
+.mp-preferences label {
+  text-shadow: 0 0 2px alpha(black, 0.01);
+}
+
+.mp-now-quality-row .mp-now-quality {
+  margin-left: 0;
+}
+
+.mp-now-quality {
+  margin-left: 6px;
+}
+
+.mp-transport {
+  margin-bottom: 2px;
+}
+
+.mp-transport-button,
+.mp-toggle-button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--mp-button-radius);
+}
+
+.mp-toggle-button:checked,
+.mp-toggle-button.mp-active {
+  color: var(--accent-color);
+  background-color: color-mix(in srgb, var(--accent-bg-color) 14%, transparent);
+}
+
+.mp-toggle-button:checked:hover,
+.mp-toggle-button.mp-active:hover {
+  background-color: color-mix(in srgb, var(--accent-bg-color) 22%, transparent);
+}
+
+button.mp-play-button {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  margin: 0 6px;
+  border-radius: var(--mp-button-radius);
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-bg-color) 35%, transparent);
+  transition: transform 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 200ms ease-out, background-image 200ms ease-out;
+}
+
+button.mp-play-button:hover {
+  background-image: image(color-mix(in srgb, currentColor 10%, transparent));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-bg-color) 45%, transparent);
+  transform: scale(1.04);
+}
+
+button.mp-play-button:active {
+  background-image: image(color-mix(in srgb, currentColor 18%, transparent));
+  transform: scale(0.96);
+}
+
+button.mp-play-button:disabled {
+  box-shadow: none;
+}
+
+.mp-time-label {
+  min-width: 40px;
+  font-feature-settings: "tnum";
+}
+
+/* Spectrum visualiser: bars in `color`, as tall as the player bar's top edge is dragged,
+ * sitting just above the seek bar's line (the bar's top padding is the negative margin). */
+.mp-visualizer {
+  margin: 4px 6px -6px;
+  color: var(--accent-color);
+  opacity: 0.8;
+}
+
+/* Thin sliders whose knob appears on hover, drag or keyboard focus. */
+scale.mp-seek-bar,
+scale.mp-volume {
+  padding: 8px 6px;
+}
+
+scale.mp-seek-bar > trough > slider,
+scale.mp-volume > trough > slider {
+  min-width: 12px;
+  min-height: 12px;
+  margin: -4px;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+scale.mp-seek-bar:hover > trough > slider,
+scale.mp-seek-bar:active > trough > slider,
+scale.mp-seek-bar:focus-visible > trough > slider,
+scale.mp-volume:hover > trough > slider,
+scale.mp-volume:active > trough > slider,
+scale.mp-volume:focus-visible > trough > slider {
+  opacity: 1;
+}
+
+scale.mp-volume.mp-muted > trough > highlight {
+  background-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+/* Compact bar: transport at the end, the seek bar as a thin line along the top. */
+.mp-player-bar.mp-compact .mp-player-bar-content {
+  padding: 6px var(--mp-spacing) 9px;
+}
+
+.mp-player-bar.mp-compact .mp-now-playing {
+  min-width: 0;
+}
+
+.mp-player-bar-progress scale.mp-seek-bar {
+  padding: 6px var(--mp-spacing) 0;
+}
+
+.mp-player-bar-progress scale.mp-seek-bar > trough {
+  min-height: 3px;
+}
+
+/* Onboarding */
+
+.mp-onboarding statuspage > scrolledwindow > viewport > box > clamp > box > image {
+  color: var(--accent-color);
+}
+
+/* Now Playing: the art over a blur of itself, which the scrim tones down to the
+ * theme's background so text stays readable. The column starts below the header bar,
+ * which the page reaches up behind. */
+
+.mp-now-playing-scrim {
+  background-color: color-mix(in srgb, var(--window-bg-color) 62%, transparent);
+}
+
+.mp-now-playing-column {
+  margin: 56px 32px 32px;
+}
+
+.mp-now-art {
+  margin-bottom: 28px;
+}
+
+.mp-cover.mp-cover-hero {
+  border-radius: calc(var(--mp-cover-radius) * 2);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.mp-now-playing-page .mp-now-byline {
+  margin-top: 2px;
+}
+
+.mp-now-playing-page .mp-now-album {
+  opacity: 0.75;
+}
+
+/* Keeps its height while nothing plays, so the art doesn't change size. */
+.mp-now-playing-page .mp-now-quality-row {
+  margin-top: 10px;
+  min-height: 20px;
+}
+
+.mp-now-playing-page .mp-seek-row {
+  margin-top: 18px;
+}
+
+.mp-now-playing-page .mp-transport {
+  margin-top: 6px;
+}
+
+.mp-now-playing-page button.mp-play-button {
+  min-width: 56px;
+  min-height: 56px;
+}
+
+.mp-now-playing-page .mp-player-extras {
+  margin-top: 6px;
+}
+
+/* The lyrics beside the art take the page's right half, over the same backdrop. */
+.mp-now-playing-split > .sidebar-pane {
+  background: none;
+  box-shadow: none;
+}
+
+.mp-now-playing-lyrics {
+  margin: 56px 32px 32px 0;
+}
+
+/* Lyrics: timed lines are dim except the one being sung; plain ones are smaller. */
+
+.mp-lyrics list {
+  background: none;
+}
+
+.mp-lyrics row {
+  padding: 6px 12px;
+  border-radius: 12px;
+  transition: opacity 300ms ease-out, background-color 150ms ease-out;
+}
+
+.mp-lyrics row:not(.activatable):hover {
+  background: none;
+}
+
+.mp-lyrics-line {
+  font-size: 1.5em;
+  font-weight: 800;
+}
+
+.mp-lyrics list.mp-lyrics-synced row:not(.mp-lyrics-current) {
+  opacity: 0.4;
+}
+
+.mp-lyrics list:not(.mp-lyrics-synced) .mp-lyrics-line {
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+/* An empty line between verses: a gap rather than a full line's height. */
+.mp-lyrics list:not(.mp-lyrics-synced) .mp-lyrics-break {
+  font-size: 0.5em;
+}

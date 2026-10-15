@@ -1,0 +1,36 @@
+{
+  "name": "Midnight",
+  "author": "Penguin Player",
+  "description": "A deeper dark mode: near-black surfaces for OLED screens and late nights. Keeps your system accent colour.",
+  "version": "1.0",
+  "scheme": "dark",
+  "dark": {
+    "window_bg": "#060608",
+    "window_fg": "#e8e8ec",
+    "view_bg": "#060608",
+    "view_fg": "#e8e8ec",
+    "sidebar_bg": "#0b0b0e",
+    "sidebar_fg": "#e2e2e7",
+    "headerbar_bg": "#060608",
+    "headerbar_fg": "#e8e8ec",
+    "card_bg": "#131317",
+    "card_fg": "#e8e8ec",
+    "popover_bg": "#16161b",
+    "popover_fg": "#e8e8ec",
+    "dialog_bg": "#101014",
+    "dialog_fg": "#e8e8ec",
+    "player_bar_bg": "#0b0b0e",
+    "player_bar_fg": "#ececf0",
+    "border": "rgba(255, 255, 255, 0.08)"
+  },
+  "shape": {
+    "window_radius": 16,
+    "panel_radius": 14,
+    "cover_radius": 10,
+    "button_radius": 999,
+    "spacing": 14
+  },
+  "effects": {
+    "cover_shadow": 0.9
+  }
+}

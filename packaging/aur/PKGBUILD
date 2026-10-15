@@ -1,0 +1,56 @@
+# Maintainer: 01Cindyy <https://github.com/01Cindyy/Penguin-player>
+
+pkgname=penguin-player
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Your music library, offline and in full quality'
+arch=('x86_64')
+url='https://github.com/01Cindyy/Penguin-player'
+license=('MIT')
+depends=(
+  'alsa-lib'
+  'dbus'
+  'gcc-libs'
+  'gdk-pixbuf2'
+  'glib2'
+  'glibc'
+  'graphene'
+  'gtk4'
+  'hicolor-icon-theme'
+  'libadwaita'
+  'pango'
+  'wayland'
+)
+makedepends=('cargo' 'cmake')
+# makepkg's LTO compiles the bundled C libraries (SQLite, Lua, Opus) into GCC-only
+# objects that Rust's linker can't read; Cargo still optimises the program as a whole.
+# Cargo strips the program too, which leaves nothing for a debug package.
+options=('!lto' '!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+# Filled in by updpkgsums once the v$pkgver tag is on GitHub (see packaging/README.md).
+sha256sums=('SKIP')
+
+prepare() {
+  cd "Penguin-player-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "Penguin-player-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release -p penguin-player
+}
+
+check() {
+  cd "Penguin-player-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo test --frozen --workspace
+}
+
+package() {
+  cd "Penguin-player-$pkgver"
+  CARGO_TARGET_DIR=target ./install.sh --prefix /usr --destdir "$pkgdir" --no-build
+}

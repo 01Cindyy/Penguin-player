@@ -1,0 +1,8 @@
+{
+  "name": "Sleep Timer",
+  "version": "1.0.0",
+  "author": "Penguin Player examples",
+  "description": "Gently fades out and pauses playback after a set number of minutes.",
+  "entry": "main.lua",
+  "api_version": 1
+}

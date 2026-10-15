@@ -1,0 +1,17 @@
+{
+  "name": "Adwaita",
+  "author": "Penguin Player",
+  "description": "The native GNOME look. Follows your light/dark preference and system accent colour.",
+  "version": "1.0",
+  "scheme": "any",
+  "shape": {
+    "window_radius": 16,
+    "panel_radius": 14,
+    "cover_radius": 10,
+    "button_radius": 999,
+    "spacing": 14
+  },
+  "effects": {
+    "cover_shadow": 0.6
+  }
+}

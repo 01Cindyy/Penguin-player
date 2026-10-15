@@ -1,0 +1,25 @@
+[package]
+name = "mp-theme"
+description = "Theme manifests (theme.json + optional style.css) compiled to GTK CSS"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+mp-core.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+# Only for `examples/check_css.rs`, which proves the generated CSS works in GTK and
+# libadwaita. Same versions and features as the app.
+gtk = { package = "gtk4", version = "0.11", features = ["v4_18"] }
+adw = { package = "libadwaita", version = "0.9", features = ["v1_7"] }

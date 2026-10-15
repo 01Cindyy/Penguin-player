@@ -1,0 +1,338 @@
+/* Search, formats and format pages, and preferences.
+ * Appended after style.css, so it can use every variable and class defined there. */
+
+/* Search */
+
+/* The overview shares the pages' gutter (see .mp-page-header in style.css). */
+.mp-search-overview {
+  padding: 6px calc(var(--mp-spacing) * 2.5) calc(var(--mp-spacing) * 2.5);
+}
+
+.mp-search-overview.mp-narrow {
+  padding: 6px calc(var(--mp-spacing) * 1.5) calc(var(--mp-spacing) * 1.5);
+}
+
+.mp-search-section > .mp-section-header {
+  margin-bottom: -2px;
+}
+
+.mp-top-result-section {
+  min-width: 300px;
+}
+
+button.mp-top-result {
+  padding: 18px;
+  border-radius: var(--mp-panel-radius);
+  background-color: var(--card-bg-color);
+  color: var(--card-fg-color);
+  box-shadow: 0 0 0 1px var(--border-color), 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: background-color 150ms ease-out, box-shadow 200ms ease-out;
+}
+
+button.mp-top-result:hover {
+  background-image: image(color-mix(in srgb, currentColor 4%, transparent));
+  box-shadow: 0 0 0 1px var(--border-color), 0 6px 16px rgba(0, 0, 0, 0.09);
+}
+
+button.mp-top-result:active {
+  background-image: image(color-mix(in srgb, currentColor 8%, transparent));
+}
+
+.mp-top-result-title {
+  letter-spacing: -0.4px;
+}
+
+button.mp-top-result .mp-top-result-details {
+  font-weight: 400;
+}
+
+.mp-kind-pill {
+  padding: 2px 9px;
+  border-radius: var(--mp-pill-radius);
+  font-size: 80%;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background-color: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+button.mp-top-result-play {
+  min-width: 48px;
+  min-height: 48px;
+  margin: 18px;
+  padding: 0;
+  border-radius: var(--mp-button-radius);
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-bg-color) 40%, transparent);
+  transition: transform 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 200ms ease-out, background-image 200ms ease-out;
+}
+
+button.mp-top-result-play:hover {
+  background-image: image(color-mix(in srgb, currentColor 10%, transparent));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-bg-color) 50%, transparent);
+  transform: scale(1.05);
+}
+
+button.mp-top-result-play:active {
+  background-image: image(color-mix(in srgb, currentColor 18%, transparent));
+  transform: scale(0.95);
+}
+
+/* Song rows line up with the section titles: the row padding sits in the gutter. */
+.mp-song-list {
+  margin: 0 -6px;
+}
+
+list.mp-song-rows {
+  background-color: transparent;
+}
+
+list.mp-song-rows > row.mp-song-row {
+  padding: 6px;
+  margin-bottom: 1px;
+  border-radius: var(--mp-small-radius);
+  transition: background-color 150ms ease-out;
+}
+
+/* Like the song rows, a shelf's cards line up with its section title. */
+.mp-search-section > shelf {
+  margin: 0 -6px;
+}
+
+/* Format colours: one identity colour per format (--mp-codec-color), used by the
+ * composition bar, legend dots, cards and the format page's tile. Taken from
+ * libadwaita's palette and checked as a categorical palette in light and dark
+ * (lightness, chroma, colour-blind separation of neighbours in the bar's order).
+ * Themes may override any of them. */
+
+.mp-codec-flac { --mp-codec-color: var(--accent-blue); }
+.mp-codec-alac { --mp-codec-color: var(--accent-pink); }
+.mp-codec-wav { --mp-codec-color: oklch(from var(--accent-yellow) 0.66 c h); }
+.mp-codec-aiff { --mp-codec-color: oklch(from var(--accent-teal) l 0.11 h); }
+.mp-codec-mp3 { --mp-codec-color: var(--orange-4); }
+.mp-codec-aac { --mp-codec-color: var(--green-5); }
+.mp-codec-opus { --mp-codec-color: var(--purple-2); }
+.mp-codec-vorbis { --mp-codec-color: var(--red-2); }
+.mp-codec-unknown { --mp-codec-color: var(--accent-slate); }
+
+.mp-codec-dot {
+  min-width: 10px;
+  min-height: 10px;
+  border-radius: 999px;
+  background-color: var(--mp-codec-color);
+}
+
+.mp-codec-tile {
+  border-radius: calc(var(--mp-cover-radius) * 1.5);
+  background-image: linear-gradient(145deg,
+    oklch(from var(--mp-codec-color) calc(l + 0.1) c calc(h - 12)),
+    oklch(from var(--mp-codec-color) calc(l - 0.08) c calc(h + 12)));
+  color: white;
+  box-shadow: var(--mp-cover-shadow);
+}
+
+.mp-codec-tile-label {
+  font-size: 200%;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* Formats page */
+
+.mp-formats-content {
+  padding: 6px calc(var(--mp-spacing) * 2.5) calc(var(--mp-spacing) * 2.5);
+}
+
+.mp-formats-content.mp-narrow {
+  padding: 6px calc(var(--mp-spacing) * 1.5) calc(var(--mp-spacing) * 1.5);
+}
+
+.mp-format-overview {
+  padding: 24px;
+  border-radius: var(--mp-panel-radius);
+  background-color: var(--card-bg-color);
+  color: var(--card-fg-color);
+  box-shadow: 0 0 0 1px var(--border-color), 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.mp-formats-content.mp-narrow .mp-format-overview {
+  padding: 18px;
+}
+
+/* A 2px gap between segments shows the card through, so neighbours never merge. */
+compositionbar.mp-composition-bar {
+  border-radius: var(--mp-pill-radius);
+}
+
+.mp-composition-segment {
+  min-height: 14px;
+  border-radius: calc(var(--mp-small-radius) / 3);
+  background-color: var(--mp-codec-color);
+}
+
+.mp-legend-name {
+  font-weight: 600;
+}
+
+.mp-quality-tier {
+  padding: 14px 16px 16px;
+  border-radius: calc(var(--mp-panel-radius) - 2px);
+  background-color: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.mp-tier-count {
+  letter-spacing: -0.3px;
+}
+
+/* Thin meters showing a share; coloured by tier or by format. */
+levelbar.mp-meter > trough {
+  min-height: 6px;
+  padding: 0;
+  border: none;
+  border-radius: var(--mp-pill-radius);
+  box-shadow: none;
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+levelbar.mp-meter > trough > block {
+  min-height: 6px;
+  border: none;
+  border-radius: var(--mp-pill-radius);
+  box-shadow: none;
+}
+
+levelbar.mp-meter > trough > block.empty {
+  background-color: transparent;
+}
+
+levelbar.mp-meter > trough > block.filled {
+  background-color: var(--mp-codec-color);
+}
+
+levelbar.mp-meter.mp-hires > trough > block.filled {
+  background-color: var(--mp-hires-badge-color);
+}
+
+levelbar.mp-meter.mp-lossless > trough > block.filled {
+  background-color: var(--mp-lossless-badge-color);
+}
+
+levelbar.mp-meter.mp-lossy > trough > block.filled {
+  background-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+
+flowbox.mp-format-grid > flowboxchild {
+  padding: 0;
+  border-radius: var(--mp-panel-radius);
+}
+
+.mp-format-card {
+  min-width: 220px;
+  padding: 18px;
+  border-radius: var(--mp-panel-radius);
+  background-color: var(--card-bg-color);
+  color: var(--card-fg-color);
+  box-shadow: 0 0 0 1px var(--border-color), 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: background-color 150ms ease-out, box-shadow 200ms ease-out;
+}
+
+.mp-format-card:hover {
+  background-image: image(color-mix(in srgb, currentColor 3%, transparent));
+  box-shadow: 0 0 0 1px var(--border-color), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.mp-format-card .mp-format-description {
+  margin-top: 4px;
+}
+
+.mp-format-figures {
+  margin-top: 20px;
+}
+
+.mp-figure-value {
+  font-size: 110%;
+}
+
+.mp-format-footer {
+  margin-top: 18px;
+}
+
+.mp-format-quality {
+  font-weight: 600;
+}
+
+.mp-format-card levelbar.mp-meter {
+  margin-top: 8px;
+}
+
+/* Format page */
+
+.mp-track-quality {
+  font-feature-settings: "tnum";
+}
+
+/* Preferences */
+
+.mp-library-stats {
+  padding: 14px 16px;
+}
+
+flowbox.mp-theme-gallery {
+  margin: 0 -6px;
+}
+
+flowbox.mp-theme-gallery > flowboxchild {
+  padding: 6px 6px 9px;
+  border-radius: calc(var(--mp-panel-radius) + 2px);
+}
+
+.mp-theme-card themepreview {
+  border-radius: var(--mp-small-radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+  transition: box-shadow 200ms ease-out, outline-color 150ms ease-out;
+}
+
+flowbox.mp-theme-gallery > flowboxchild:hover themepreview {
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+}
+
+.mp-theme-card.mp-active themepreview {
+  outline-color: var(--accent-color);
+}
+
+.mp-theme-check {
+  min-width: 22px;
+  min-height: 22px;
+  margin: 7px;
+  border-radius: var(--mp-pill-radius);
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  -gtk-icon-size: 14px;
+}
+
+.mp-theme-name {
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.mp-plugin-error {
+  font-size: 90%;
+}
+
+menubutton.mp-plugin-error-button > button {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--mp-pill-radius);
+  font-size: 90%;
+  font-weight: 600;
+  color: var(--warning-color);
+  background-color: color-mix(in srgb, var(--warning-bg-color) 14%, transparent);
+}
+
+menubutton.mp-plugin-error-button > button:hover {
+  background-color: color-mix(in srgb, var(--warning-bg-color) 22%, transparent);
+}

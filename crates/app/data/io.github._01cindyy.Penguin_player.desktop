@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Penguin Player
+Comment=Play the music files in your library
+Icon=io.github._01cindyy.Penguin_player
+Exec=penguin-player
+Terminal=false
+Categories=AudioVideo;Audio;Player;GTK;
+Keywords=music;audio;player;playlist;flac;library;
+StartupNotify=true

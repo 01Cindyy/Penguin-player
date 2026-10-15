@@ -1,0 +1,201 @@
+/* Playlist page, playlist management and the queue panel.
+ * Appended after style.css, so it can use every variable and class defined there. */
+
+/* Playlist artwork: the mosaic is rounded and shadowed as a whole, like any large
+ * cover; its tiles are plain squares inside it. */
+
+.mp-cover-mosaic .mp-cover {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Small pill buttons for secondary actions inside panels and cards. */
+
+button.mp-queue-clear,
+button.mp-missing-remove-all {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--mp-button-radius);
+  font-size: 90%;
+}
+
+/* Files missing from a playlist: a quiet card under its songs, in the page gutter. */
+
+.mp-missing-entries {
+  margin: 6px calc(var(--mp-spacing) * 2.5 - 6px) var(--mp-spacing);
+  border-radius: var(--mp-panel-radius);
+  background-color: color-mix(in srgb, currentColor 4%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.mp-missing-entries.mp-narrow {
+  margin-left: calc(var(--mp-spacing) * 1.5 - 6px);
+  margin-right: calc(var(--mp-spacing) * 1.5 - 6px);
+}
+
+.mp-missing-header {
+  padding: 9px 9px 9px var(--mp-spacing);
+}
+
+.mp-missing-icon {
+  color: var(--warning-color);
+}
+
+.mp-missing-toggle image {
+  transition: -gtk-icon-transform 200ms ease-out;
+}
+
+.mp-missing-toggle:checked image {
+  -gtk-icon-transform: rotate(-180deg);
+}
+
+button.mp-missing-toggle:checked {
+  background-color: transparent;
+}
+
+button.mp-missing-toggle:checked:hover {
+  background-color: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+listview.mp-missing-list {
+  background-color: transparent;
+  padding: 0 6px 6px;
+}
+
+listview.mp-missing-list > row {
+  padding: 6px 3px 6px 6px;
+  border-radius: var(--mp-small-radius);
+}
+
+/* Missing files read as unavailable, but stay legible. */
+.mp-missing-row .mp-missing-name {
+  opacity: 0.55;
+}
+
+/* Reorderable lists. The cells' padding moves into their content, so every point of
+ * a row takes a drop, and a line in the accent colour shows where it lands. */
+
+.mp-reorderable columnview.mp-track-table > listview > row > cell {
+  padding: 0;
+}
+
+.mp-reorder-cell {
+  padding: 6px;
+}
+
+.mp-reorderable columnview > listview > row.mp-drop-before,
+listview.mp-queue-list > row.mp-drop-before {
+  box-shadow: inset 0 2px var(--accent-color);
+}
+
+.mp-reorderable columnview > listview > row.mp-drop-after,
+listview.mp-queue-list > row.mp-drop-after {
+  box-shadow: inset 0 -2px var(--accent-color);
+}
+
+/* The pill that follows the pointer while songs are dragged. */
+.mp-drag-icon {
+  margin: 12px;
+  padding: 6px 14px;
+  border-radius: var(--mp-pill-radius);
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+/* Sidebar playlists light up while songs are dragged over them. */
+.mp-sidebar .mp-sidebar-playlists > row:drop(active),
+.mp-sidebar .mp-sidebar-section:drop(active) {
+  background-color: color-mix(in srgb, var(--accent-bg-color) 16%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-color) 70%, transparent);
+}
+
+.mp-sidebar .mp-sidebar-section:drop(active) {
+  border-radius: var(--mp-small-radius);
+}
+
+/* Queue panel. The card, the headings and the rows share one inset, so covers and
+ * titles line up down the panel. */
+
+.mp-queue-now {
+  padding: 6px var(--mp-spacing) var(--mp-spacing);
+}
+
+.mp-queue-heading {
+  padding: 0 9px;
+}
+
+.mp-now-playing-card {
+  padding: 9px;
+  border-radius: var(--mp-panel-radius);
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.mp-queue-up-next-header {
+  padding: 6px calc(var(--mp-spacing) + 3px) 6px var(--mp-spacing);
+}
+
+.mp-queue-up-next-header .mp-queue-summary {
+  padding: 0 9px;
+  font-feature-settings: "tnum";
+}
+
+.mp-queue-mode {
+  color: var(--accent-color);
+  margin: 0 3px;
+}
+
+listview.mp-queue-list {
+  background-color: transparent;
+  padding: 0 var(--mp-spacing) var(--mp-spacing);
+}
+
+/* As in reorderable track lists, the row's padding sits inside its content. */
+listview.mp-queue-list > row {
+  padding: 0;
+  margin-bottom: 1px;
+  border-radius: var(--mp-small-radius);
+  transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.mp-queue-row {
+  padding: 6px 3px 6px 9px;
+}
+
+/* The duration gives way to the remove button while the row is hovered or has the
+ * keyboard focus, or the button itself has the focus. */
+.mp-queue-row .mp-track-duration,
+.mp-queue-remove {
+  transition: opacity 150ms ease-out;
+}
+
+.mp-queue-remove {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  opacity: 0;
+}
+
+listview.mp-queue-list > row:hover .mp-queue-remove,
+listview.mp-queue-list > row:focus-visible .mp-queue-remove,
+.mp-queue-row:focus-within .mp-queue-remove {
+  opacity: 1;
+}
+
+listview.mp-queue-list > row:hover .mp-track-duration,
+listview.mp-queue-list > row:focus-visible .mp-track-duration,
+.mp-queue-row:focus-within .mp-track-duration {
+  opacity: 0;
+}
+
+.mp-queue-nothing {
+  padding: calc(var(--mp-spacing) * 2) calc(var(--mp-spacing) * 2);
+}
+
+/* Songs dragged over the panel will be queued. */
+.mp-queue-content:drop(active) {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-color) 60%, transparent);
+  border-radius: var(--mp-panel-radius);
+}

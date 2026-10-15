@@ -1,0 +1,8 @@
+{
+  "name": "Now Playing Toast",
+  "version": "1.0.0",
+  "author": "Penguin Player examples",
+  "description": "Shows a small notification with the title, artist and quality of every new track.",
+  "entry": "main.lua",
+  "api_version": 1
+}

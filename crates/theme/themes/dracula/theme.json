@@ -1,0 +1,42 @@
+{
+  "name": "Dracula",
+  "author": "Penguin Player",
+  "description": "The dark theme for vampires, by Zeno Rocha and the Dracula community.",
+  "version": "1.0",
+  "scheme": "dark",
+  "dark": {
+    "accent": "#bd93f9",
+    "accent_fg": "#282a36",
+    "destructive": "#c2364a",
+    "success": "#2f7a4a",
+    "warning": "#f1fa8c",
+    "window_bg": "#282a36",
+    "window_fg": "#f8f8f2",
+    "view_bg": "#282a36",
+    "view_fg": "#f8f8f2",
+    "sidebar_bg": "#21222c",
+    "sidebar_fg": "#f8f8f2",
+    "headerbar_bg": "#282a36",
+    "headerbar_fg": "#f8f8f2",
+    "card_bg": "#343746",
+    "card_fg": "#f8f8f2",
+    "popover_bg": "#343746",
+    "popover_fg": "#f8f8f2",
+    "dialog_bg": "#2d2f3d",
+    "dialog_fg": "#f8f8f2",
+    "player_bar_bg": "#21222c",
+    "player_bar_fg": "#f8f8f2",
+    "border": "rgba(248, 248, 242, 0.10)",
+    "hires_badge": "#f1fa8c"
+  },
+  "shape": {
+    "window_radius": 16,
+    "panel_radius": 14,
+    "cover_radius": 10,
+    "button_radius": 999,
+    "spacing": 14
+  },
+  "effects": {
+    "cover_shadow": 0.7
+  }
+}

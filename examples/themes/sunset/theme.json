@@ -1,0 +1,66 @@
+{
+  "name": "Sunset",
+  "author": "Penguin Player examples",
+  "description": "Warm peach and rose: burnt orange on cream by day, soft peach on deep plum-brown by night.",
+  "version": "1.0",
+  "scheme": "any",
+  "colors": {
+    "destructive": "#b3394f",
+    "success": "#2b7a4b",
+    "warning": "#e8a33d"
+  },
+  "light": {
+    "accent": "#b04e28",
+    "accent_fg": "#ffffff",
+    "window_bg": "#fbf3ee",
+    "window_fg": "#3a2622",
+    "view_bg": "#fffaf6",
+    "view_fg": "#3a2622",
+    "headerbar_bg": "#f6e9e1",
+    "headerbar_fg": "#3a2622",
+    "sidebar_bg": "#f4e6dd",
+    "sidebar_fg": "#3a2622",
+    "card_bg": "#fffaf7",
+    "card_fg": "#3a2622",
+    "popover_bg": "#fffaf7",
+    "popover_fg": "#3a2622",
+    "dialog_bg": "#fbf1ea",
+    "dialog_fg": "#3a2622",
+    "player_bar_bg": "#f7e8de",
+    "player_bar_fg": "#3a2622",
+    "border": "rgba(58, 38, 34, 0.12)",
+    "hires_badge": "#7a5613"
+  },
+  "dark": {
+    "accent": "#f2a074",
+    "accent_fg": "#2a1712",
+    "window_bg": "#1e1517",
+    "window_fg": "#f3e6df",
+    "view_bg": "#191113",
+    "view_fg": "#f3e6df",
+    "headerbar_bg": "#241a1c",
+    "headerbar_fg": "#f3e6df",
+    "sidebar_bg": "#221819",
+    "sidebar_fg": "#ead9d1",
+    "card_bg": "#2a1f21",
+    "card_fg": "#f3e6df",
+    "popover_bg": "#2d2224",
+    "popover_fg": "#f3e6df",
+    "dialog_bg": "#261b1d",
+    "dialog_fg": "#f3e6df",
+    "player_bar_bg": "#2a1e20",
+    "player_bar_fg": "#f6ebe5",
+    "border": "rgba(243, 230, 223, 0.10)",
+    "hires_badge": "#e8c47a"
+  },
+  "shape": {
+    "window_radius": 16,
+    "panel_radius": 16,
+    "cover_radius": 12,
+    "spacing": 14
+  },
+  "effects": {
+    "cover_shadow": 0.9
+  },
+  "font_family": "Inter, Cantarell, sans-serif"
+}

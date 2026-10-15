@@ -1,0 +1,32 @@
+{
+  "name": "Online Lyrics",
+  "version": "1.0.0",
+  "author": "Penguin Player",
+  "description": "Finds lyrics on LRCLIB for songs that have none of their own, or better ones if you prefer, when you open them in Now Playing.",
+  "api_version": 2,
+  "privacy": "Only the title and artist of songs are sent, and only when you open their lyrics. Unless you prefer online lyrics, that’s only for songs without lyrics of their own.",
+  "permissions": {
+    "network": ["lrclib.net"]
+  },
+  "settings": [
+    {
+      "key": "prefer",
+      "type": "choice",
+      "title": "Prefer Online Lyrics",
+      "subtitle": "Over songs’ own lyrics. Timed lyrics always win over untimed ones.",
+      "default": "never",
+      "choices": [
+        { "value": "never", "title": "Never" },
+        { "value": "untimed", "title": "Over Untimed Lyrics" },
+        { "value": "always", "title": "Always" }
+      ]
+    },
+    {
+      "key": "plain",
+      "type": "boolean",
+      "title": "Lyrics Without Timing",
+      "subtitle": "Show plain lyrics when no timed ones are found",
+      "default": true
+    }
+  ]
+}

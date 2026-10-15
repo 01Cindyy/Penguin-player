@@ -1,0 +1,66 @@
+{
+  "name": "Soft Rice",
+  "author": "Penguin Player",
+  "description": "Muted lavender and teal on deep charcoal, with a floating now-playing bar and soft glows.",
+  "version": "1.0",
+  "scheme": "any",
+  "colors": {
+    "destructive": "#b8455e",
+    "success": "#237a6f",
+    "warning": "#e5b567"
+  },
+  "light": {
+    "accent": "#7259b0",
+    "accent_fg": "#ffffff",
+    "window_bg": "#f5f2f9",
+    "window_fg": "#2b2836",
+    "view_bg": "#fbfafd",
+    "view_fg": "#2b2836",
+    "headerbar_bg": "#f5f2f9",
+    "headerbar_fg": "#2b2836",
+    "sidebar_bg": "#ece8f3",
+    "sidebar_fg": "#312d3c",
+    "card_bg": "#ffffff",
+    "card_fg": "#2b2836",
+    "popover_bg": "#ffffff",
+    "popover_fg": "#2b2836",
+    "dialog_bg": "#f8f6fb",
+    "dialog_fg": "#2b2836",
+    "player_bar_bg": "#ffffff",
+    "player_bar_fg": "#2b2836",
+    "border": "rgba(43, 40, 54, 0.12)",
+    "hires_badge": "#16685e"
+  },
+  "dark": {
+    "accent": "#b7a3e6",
+    "accent_fg": "#1b1726",
+    "window_bg": "#16151b",
+    "window_fg": "#e7e2ef",
+    "view_bg": "#1b1a21",
+    "view_fg": "#e7e2ef",
+    "headerbar_bg": "#1b1a21",
+    "headerbar_fg": "#e7e2ef",
+    "sidebar_bg": "#1f1e26",
+    "sidebar_fg": "#dcd6e6",
+    "card_bg": "#24232c",
+    "card_fg": "#e7e2ef",
+    "popover_bg": "#27262f",
+    "popover_fg": "#e7e2ef",
+    "dialog_bg": "#212028",
+    "dialog_fg": "#e7e2ef",
+    "player_bar_bg": "#23222b",
+    "player_bar_fg": "#efeaf6",
+    "border": "rgba(231, 226, 239, 0.10)",
+    "hires_badge": "#7dd3c4"
+  },
+  "shape": {
+    "window_radius": 18,
+    "panel_radius": 18,
+    "cover_radius": 14,
+    "button_radius": 999,
+    "spacing": 14
+  },
+  "effects": {
+    "cover_shadow": 0.85
+  }
+}

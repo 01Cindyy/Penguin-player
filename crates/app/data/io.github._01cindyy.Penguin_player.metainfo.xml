@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What software centres show about the app (AppStream). Add a <release> for each
+     version, newest first; packaging/build.sh checks the newest one matches Cargo.toml. -->
+<component type="desktop-application">
+  <id>io.github._01cindyy.Penguin_player</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Penguin Player</name>
+  <summary>Your music library, offline and in full quality</summary>
+  <developer id="io.github._01cindyy">
+    <name>01Cindyy</name>
+  </developer>
+
+  <description>
+    <p>
+      Penguin Player plays the music files you already have. Point it at a folder to
+      browse, search and play your library, with nothing going online.
+    </p>
+    <ul>
+      <li>FLAC, ALAC, WAV, AIFF, MP3, AAC, Opus and Ogg Vorbis, played gapless and in full quality</li>
+      <li>Songs, albums, artists and formats, with search as you type</li>
+      <li>A queue and playlists you can reorder by dragging</li>
+      <li>Timed lyrics from your files, and a visualiser in your theme's colour</li>
+      <li>Fourteen themes, or your own, and appearance options for any of them</li>
+      <li>Sandboxed Lua plugins, such as online lyrics and your music on Discord</li>
+      <li>Media keys and the desktop's media controls</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github._01cindyy.Penguin_player.desktop</launchable>
+  <provides>
+    <binary>penguin-player</binary>
+  </provides>
+
+  <url type="homepage">https://github.com/01Cindyy/Penguin-player</url>
+  <url type="bugtracker">https://github.com/01Cindyy/Penguin-player/issues</url>
+  <url type="vcs-browser">https://github.com/01Cindyy/Penguin-player</url>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0.0" date="2026-10-15">
+      <description>
+        <p>The first release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

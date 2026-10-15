@@ -1,0 +1,41 @@
+/* Soft Rice: floating cards with a lavender-to-teal glow. */
+
+:root {
+  --rice-teal: #19756a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rice-teal: #7dd3c4;
+  }
+}
+
+/* The now-playing bar floats above the content as a rounded card. */
+.mp-player-bar {
+  margin: 0 10px 10px 10px;
+  border-radius: var(--mp-panel-radius);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22), 0 0 0 1px var(--border-color);
+}
+
+.mp-play-button {
+  background-image: linear-gradient(135deg, var(--accent-bg-color), color-mix(in srgb, var(--accent-bg-color) 55%, var(--rice-teal)));
+  color: var(--accent-fg-color);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-bg-color) 40%, transparent);
+}
+
+.mp-seek-bar trough > highlight,
+.mp-volume trough > highlight {
+  background-image: linear-gradient(to right, var(--accent-bg-color), var(--rice-teal));
+}
+
+.mp-track-list .mp-playing .mp-track-title {
+  color: var(--accent-color);
+}
+
+.mp-album-card .mp-cover {
+  transition: box-shadow 200ms ease-out;
+}
+
+.mp-album-card:hover .mp-cover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.18);
+}

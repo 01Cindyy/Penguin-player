@@ -1,0 +1,40 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["crates/app"]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+rust-version = "1.92"
+publish = false
+
+[workspace.lints.clippy]
+# Nested modules live in `<name>/mod.rs`.
+self_named_module_files = "warn"
+
+[workspace.dependencies]
+mp-core = { path = "crates/core" }
+mp-audio = { path = "crates/audio" }
+mp-library = { path = "crates/library" }
+mp-plugins = { path = "crates/plugins" }
+mp-theme = { path = "crates/theme" }
+
+async-channel = "2.5"
+directories = "6"
+fastrand = "2"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+
+[profile.dev.package."*"]
+# Decoding hi-res audio in an unoptimised build stutters, so dependencies are always optimised.
+opt-level = 2
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
