@@ -22,11 +22,26 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
-use mp_core::{Playlist, PlaylistId, PlaylistItemId, Track, TrackId};
+use mp_core::{CoverId, Playlist, PlaylistId, PlaylistItemId, Track, TrackId};
 use rusqlite::Connection;
 
 pub use lyrics::{read_found_lyrics, read_lyrics, save_found_lyrics};
 pub use watcher::LibraryWatcher;
+
+/// Reads songs to play them without adding them to the library, such as songs opened
+/// from a file manager: their tags as a scan reads them, and their covers, written to
+/// `covers_dir` (not the library's covers folder, which scans clean up). Each item is
+/// the song at that place in `paths`, with its id left at 0 for the caller to give, or
+/// `None` if the path isn't a song that can be read. Blocks while it reads.
+pub fn read_songs(paths: &[PathBuf], covers_dir: &Path) -> Result<Vec<Option<Track>>> {
+    scanner::read_songs(paths, covers_dir)
+}
+
+/// `path` spelled the way the library stores track paths: absolute, without `.` parts
+/// or repeated separators. Nothing is looked up on disk, so symlinks stay as they are.
+pub fn normalize_path(path: &Path) -> PathBuf {
+    paths::normalize(path)
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum LibraryError {
@@ -190,6 +205,11 @@ impl Library {
 
     pub fn rename_playlist(&self, id: PlaylistId, name: &str) -> Result<()> {
         playlists::rename(&self.conn, id, name)
+    }
+
+    /// Sets or, with `None`, clears the image chosen for a playlist.
+    pub fn set_playlist_image(&self, id: PlaylistId, image: Option<&CoverId>) -> Result<()> {
+        playlists::set_image(&self.conn, id, image)
     }
 
     pub fn delete_playlist(&self, id: PlaylistId) -> Result<()> {

@@ -31,6 +31,7 @@ mod ring;
 mod scope;
 mod shared;
 mod spectrum;
+mod waveform;
 
 /// The integration tests' fixture writers, shared with the unit tests.
 #[cfg(test)]
@@ -51,6 +52,7 @@ use shared::Shared;
 pub use decoder::{DecodeError, StreamInfo, TrackDecoder};
 pub use scope::{Scope, ScopeWatch};
 pub use spectrum::Spectrum;
+pub use waveform::{WAVEFORM_POINTS, analyse_waveform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EngineConfig {

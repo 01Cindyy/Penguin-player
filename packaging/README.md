@@ -19,8 +19,9 @@ builds the version in `Cargo.toml` into `dist/`:
 | `penguin-player-<version>-x86_64.tar.gz` | The program with `install.sh`, for any such distribution |
 | `THIRD-PARTY-LICENSES.txt`, `SHA256SUMS` | The licences of what the program is built with, and the files' checksums |
 
-It also refreshes `THIRD-PARTY-LICENSES.txt` in the source folder, which `install.sh`
-and the AUR package install.
+It also refreshes `THIRD-PARTY-LICENSES.txt` in the source folder, which `install.sh`,
+the AUR package and the Windows download install. It covers the crates of Linux and
+Windows builds alike.
 
 Everything is built in a rootless Podman container with Debian 13 (`Containerfile`):
 the oldest distribution with the GTK and libadwaita the app needs, so the program runs
@@ -66,3 +67,51 @@ the notice.
    ```
 
    and copy `PKGBUILD` and `.SRCINFO` into the AUR repository.
+6. On Windows, run `packaging/windows/make-bundle.sh` and add the `.zip` from `dist/`
+   to the release (see [Windows](#windows-msys2) below).
+
+## Windows (MSYS2)
+
+Penguin Player is built for Windows (x86_64) in [MSYS2](https://www.msys2.org)'s
+UCRT64 environment, which has GTK, libadwaita, Rust and the compilers.
+
+### Setting up, once
+
+1. Install MSYS2, and open **MSYS2 UCRT64** from the Start menu.
+2. Run `pacman -Syu`. If it closes the window, open it again and run it once more.
+3. Install what the build needs:
+
+   ```sh
+   pacman -S --needed git make zip mingw-w64-ucrt-x86_64-{gcc,pkgconf,cmake,rust,gtk4,libadwaita}
+   ```
+
+### Trying it
+
+In the UCRT64 shell:
+
+```sh
+git clone https://github.com/01Cindyy/Penguin-player.git
+cd Penguin-player
+cargo run
+```
+
+`cargo run` keeps a console window open beside the app with its log. A release build
+(`cargo run --release`) opens none, like the download.
+
+The app keeps its settings in `%APPDATA%\_01cindyy\penguin-player\config`, its library in
+`%APPDATA%\_01cindyy\penguin-player\data`, and covers and lyrics in
+`%LOCALAPPDATA%\_01cindyy\penguin-player\cache`.
+
+### The download
+
+```sh
+packaging/windows/make-bundle.sh
+```
+
+builds the program and makes `dist/penguin-player-<version>-windows-x86_64.zip`: a
+folder with `bin\penguin-player.exe`, the DLLs it loads from MSYS2, GTK's image loaders
+and settings schemas, and in `share\licenses` the licences of the app, its crates and
+the MSYS2 packages, with where to get their source code (`LIBRARIES.txt`). It runs
+from wherever it's unzipped. `build.rs` gives the program its icon
+(`crates/app/data/windows/penguin-player.ico`) and its name, through MSYS2's `windres`.
+

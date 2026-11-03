@@ -1,8 +1,12 @@
 # cargo-about's settings for THIRD-PARTY-LICENSES.txt (see make-packages.sh).
 
-# Every crate built into the program on Linux, including those that only run while it
-# builds: some of them compile C libraries into it (Lua comes from lua-src).
-targets = ["x86_64-unknown-linux-gnu"]
+# Every crate built into the program on Linux and Windows, including those that
+# only run while it builds: some of them compile C libraries into it (Lua comes from
+# lua-src).
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-gnu",
+]
 ignore-dev-dependencies = true
 ignore-build-dependencies = false
 # The app's own crates, which are under its MIT licence.

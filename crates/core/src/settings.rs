@@ -140,7 +140,11 @@ pub struct Settings {
     pub quality_details: bool,
     /// Show the spectrum visualiser above the seek bar.
     pub visualizer: bool,
-    /// Linear volume in `0.0..=1.0`.
+    /// Use the song's waveform as the seek bar instead of a plain line.
+    pub waveform_seek_bar: bool,
+    /// The volume slider's level in `0.0..=1.0`. The output plays it at the level
+    /// cubed, as desktop volume controls do.
+    #[serde(rename = "volume_level")]
     pub volume: f32,
     pub muted: bool,
     pub shuffle: bool,
@@ -171,6 +175,7 @@ impl Default for Settings {
             defined_edges: false,
             quality_details: false,
             visualizer: true,
+            waveform_seek_bar: false,
             volume: 0.8,
             muted: false,
             shuffle: false,
@@ -198,7 +203,10 @@ impl Settings {
             }
         };
         match serde_json::from_str::<Settings>(&text) {
-            Ok(settings) => settings.sanitized(),
+            Ok(mut settings) => {
+                settings.carry_over_volume(&text);
+                settings.sanitized()
+            }
             Err(err) => {
                 log::warn!(
                     "Invalid settings in {}: {err}; using defaults",
@@ -222,6 +230,23 @@ impl Settings {
         let temp = path.with_extension("json.tmp");
         std::fs::write(&temp, json)?;
         std::fs::rename(&temp, path)
+    }
+
+    /// Penguin Player 1.0 stored the volume as the output's gain, under `volume`. Its
+    /// level is the cube root, so the music plays exactly as loud as before.
+    fn carry_over_volume(&mut self, text: &str) {
+        #[derive(Deserialize)]
+        struct Stored {
+            volume: Option<f32>,
+            volume_level: Option<f32>,
+        }
+        if let Ok(Stored {
+            volume: Some(gain),
+            volume_level: None,
+        }) = serde_json::from_str(text)
+        {
+            self.volume = gain.cbrt();
+        }
     }
 
     fn sanitized(mut self) -> Self {
@@ -361,7 +386,7 @@ mod tests {
     fn missing_fields_use_defaults() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("settings.json");
-        std::fs::write(&path, r#"{ "volume": 4.0, "repeat": "one" }"#).unwrap();
+        std::fs::write(&path, r#"{ "volume_level": 4.0, "repeat": "one" }"#).unwrap();
         let settings = Settings::load(&path);
         assert_eq!(settings.volume, 1.0);
         assert_eq!(settings.repeat, RepeatMode::One);
@@ -372,6 +397,20 @@ mod tests {
         );
         assert!(!settings.defined_edges && !settings.quality_details);
         assert_eq!(settings.theme, DEFAULT_THEME_ID);
+    }
+
+    #[test]
+    fn volumes_from_before_the_slider_curve_sound_the_same() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(&path, r#"{ "volume": 0.125, "muted": true }"#).unwrap();
+        let settings = Settings::load(&path);
+        assert_eq!(settings.volume, 0.5);
+        assert!(settings.muted);
+        settings.save(&path).unwrap();
+        let json = std::fs::read_to_string(&path).unwrap();
+        assert!(!json.contains(r#""volume""#), "{json}");
+        assert_eq!(Settings::load(&path).volume, 0.5);
     }
 
     #[test]

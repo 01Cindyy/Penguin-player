@@ -245,7 +245,7 @@ fn sort_button() -> (gtk::MenuButton, adw::ButtonContent) {
         .always_show_arrow(true)
         .tooltip_text("Sort Albums")
         .valign(gtk::Align::Center)
-        .css_classes(["flat", "mp-sort-button"])
+        .css_classes(["mp-sort-button"])
         .build();
     (button, label)
 }

@@ -14,7 +14,7 @@ use crate::model::TrackObject;
 use crate::ui::icons;
 use crate::ui::widgets::discover::codec;
 use crate::ui::widgets::{CoverSize, PageHeader, TrackColumn, TrackList};
-use crate::ui::{disconnect_on_destroy, keep_alive};
+use crate::ui::{disconnect_on_destroy, filter_chip, keep_alive};
 use crate::util::{song_count, total_length};
 
 pub fn build(ctx: &Rc<AppContext>, format: AudioFormat) -> adw::NavigationPage {
@@ -56,7 +56,16 @@ impl FormatPage {
     fn new(ctx: &Rc<AppContext>, format: AudioFormat) -> Self {
         let header = PageHeader::new(format.label());
         header.set_eyebrow(&format!("{} Format", codec::compression_label(format)));
-        header.set_leading(Some(&codec::codec_tile(format, CoverSize::Medium.pixels())));
+        let tile = codec::codec_tile(format, CoverSize::Large.pixels());
+        header.set_leading(Some(&tile));
+        header.connect_narrow_notify(glib::clone!(
+            #[weak]
+            tile,
+            move |header| {
+                let size = CoverSize::header(header.narrow()).pixels();
+                tile.set_size_request(size, size);
+            }
+        ));
         let play = header.add_button(icons::PLAY, "_Play", true);
         play.set_tooltip_text(Some("Play these songs in order"));
         let shuffle = header.add_button(icons::SHUFFLE, "_Shuffle", false);
@@ -162,10 +171,15 @@ impl FormatPage {
         if qualities.len() < 2 {
             return;
         }
-        let all = self.chip(None, "All", &song_count(composition.tracks));
+        let all = self.chip(
+            None,
+            "All",
+            composition.tracks,
+            &song_count(composition.tracks),
+        );
         for (quality, count) in qualities {
             let tooltip = format!("{} · {}", quality.label(), song_count(count));
-            let chip = self.chip(Some(quality), &quality.short_label(), &tooltip);
+            let chip = self.chip(Some(quality), &quality.short_label(), count, &tooltip);
             chip.set_group(Some(&all));
         }
     }
@@ -174,14 +188,12 @@ impl FormatPage {
         self: &Rc<Self>,
         quality: Option<Quality>,
         label: &str,
+        count: usize,
         tooltip: &str,
     ) -> gtk::ToggleButton {
-        let chip = gtk::ToggleButton::builder()
-            .label(label)
-            .tooltip_text(tooltip)
-            .css_classes(["mp-chip"])
-            .active(quality == self.quality.get())
-            .build();
+        let chip = filter_chip(label, count);
+        chip.set_tooltip_text(Some(tooltip));
+        chip.set_active(quality == self.quality.get());
         let weak = Rc::downgrade(self);
         chip.connect_toggled(move |chip| {
             if chip.is_active()

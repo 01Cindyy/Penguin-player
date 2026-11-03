@@ -9,8 +9,7 @@ use mp_core::util::format_duration;
 
 use crate::model::TrackObject;
 use crate::services::covers::CoverCache;
-use crate::ui::icons;
-use crate::ui::widgets::{FormatBadge, SongHeading};
+use crate::ui::widgets::{FormatBadge, SongHeading, equaliser};
 use crate::ui::{ellipsized_label, set_css_class};
 
 /// A column a track list can show.
@@ -57,6 +56,14 @@ impl TrackColumn {
         }
     }
 
+    /// Whether the column's title and values line up at its end rather than its start.
+    pub(super) fn aligned_to_end(self) -> bool {
+        matches!(
+            self,
+            TrackColumn::Number | TrackColumn::Position | TrackColumn::Duration
+        )
+    }
+
     /// Lists narrower than this many sp hide the column, leaving room for the title.
     pub(super) fn hidden_below(self) -> Option<u32> {
         match self {
@@ -94,10 +101,10 @@ impl TrackColumn {
 
 /// The widgets inside a cell, which depend on its column.
 enum CellContent {
-    /// Track or row number, swapped for a speaker icon while the track plays.
+    /// Track or row number, swapped for an equaliser while the track plays.
     Number {
         label: gtk::Label,
-        playing_icon: gtk::Image,
+        playing_icon: gtk::Box,
     },
     Title(SongHeading),
     Text(gtk::Label),
@@ -276,10 +283,12 @@ fn build_content(column: TrackColumn, covers: Option<&CoverCache>) -> (gtk::Widg
             let heading = SongHeading::new(covers);
             (heading.root.clone().upcast(), CellContent::Title(heading))
         }
-        // Left-aligned like the column headers, which GTK always starts at the left.
-        TrackColumn::Duration | TrackColumn::Year => {
-            text(&["mp-track-duration", "numeric", "dim-label"])
+        TrackColumn::Duration => {
+            let label = ellipsized_label(&["mp-track-duration", "numeric", "dim-label"]);
+            label.set_xalign(1.0);
+            (label.clone().upcast(), CellContent::Text(label))
         }
+        TrackColumn::Year => text(&["mp-track-duration", "numeric", "dim-label"]),
         TrackColumn::Quality => text(&["mp-track-quality", "numeric", "dim-label"]),
         TrackColumn::Artist => text(&["mp-track-artist", "dim-label"]),
         TrackColumn::Album => text(&["mp-track-album", "dim-label"]),
@@ -290,23 +299,17 @@ fn build_content(column: TrackColumn, covers: Option<&CoverCache>) -> (gtk::Widg
     }
 }
 
-/// The track or row number, with the now-playing icon that replaces it.
+/// The track or row number, with the equaliser that replaces it.
 fn number_cell() -> (gtk::Widget, CellContent) {
     let label = gtk::Label::builder()
         .xalign(1.0)
         .css_classes(["mp-track-number", "numeric", "dim-label"])
         .build();
-    let playing_icon = gtk::Image::builder()
-        .icon_name(icons::NOW_PLAYING)
-        .halign(gtk::Align::End)
-        .visible(false)
-        .css_classes(["mp-playing-icon"])
-        .tooltip_text("Now playing")
-        .build();
-    let row = gtk::Box::builder()
-        .halign(gtk::Align::End)
-        .margin_end(6)
-        .build();
+    let playing_icon = equaliser();
+    playing_icon.set_halign(gtk::Align::End);
+    playing_icon.set_visible(false);
+    playing_icon.add_css_class("mp-playing-icon");
+    let row = gtk::Box::builder().halign(gtk::Align::End).build();
     row.append(&label);
     row.append(&playing_icon);
     (

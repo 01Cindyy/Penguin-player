@@ -15,7 +15,7 @@ button.mp-queue-clear,
 button.mp-missing-remove-all {
   min-height: 28px;
   padding: 0 12px;
-  border-radius: var(--mp-button-radius);
+  border-radius: var(--mp-pill-radius);
   font-size: 90%;
 }
 
@@ -101,7 +101,7 @@ listview.mp-queue-list > row.mp-drop-after {
   background-color: var(--accent-bg-color);
   color: var(--accent-fg-color);
   font-weight: 600;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--mp-floating-shadow);
 }
 
 /* Sidebar playlists light up while songs are dragged over them. */

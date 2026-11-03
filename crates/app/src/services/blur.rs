@@ -6,7 +6,7 @@
 //! only have one such object, so with that GTK the blur is requested through the
 //! appearance CSS instead and this module only checks the compositor can blur. Hyprland blurs translucent
 //! windows according to its own configuration, and other desktops (GNOME, X11
-//! sessions, Windows, macOS) offer apps no blur, so there this does nothing.
+//! sessions, Windows) offer apps no blur, so there this does nothing.
 
 use std::cell::Cell;
 use std::rc::Rc;

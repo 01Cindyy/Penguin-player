@@ -26,7 +26,10 @@ use crate::ui::pages::NARROW_PAGE_WIDTH;
 use crate::ui::widgets::PageHeader;
 use crate::ui::widgets::browse::{AlbumCardDetail, CardKind};
 use crate::ui::widgets::discover::TopResult;
-use crate::ui::{disconnect_on_destroy, keep_alive, mark_narrow_while, max_width_breakpoint};
+use crate::ui::{
+    disconnect_on_destroy, filter_chip, keep_alive, mark_narrow_while, max_width_breakpoint,
+    set_filter_chip_count,
+};
 use crate::util::count_label;
 
 use full_lists::FullLists;
@@ -356,6 +359,7 @@ impl SearchPage {
         for (view, chip) in &self.chips {
             let count = view.count(&results);
             chip.set_visible(*view == View::All || count > 0);
+            set_filter_chip_count(chip, count);
             chip.set_tooltip_text(Some(&count_label(count, "result", "results")));
         }
         let view = self.view.get();
@@ -498,11 +502,8 @@ fn view_chips() -> (adw::WrapBox, Vec<(View, gtk::ToggleButton)>) {
     let chips = View::ALL
         .into_iter()
         .map(|view| {
-            let chip = gtk::ToggleButton::builder()
-                .label(view.label())
-                .css_classes(["mp-chip"])
-                .active(view == View::All)
-                .build();
+            let chip = filter_chip(view.label(), 0);
+            chip.set_active(view == View::All);
             chip.set_group(group.as_ref());
             group.get_or_insert_with(|| chip.clone());
             chip_box.append(&chip);

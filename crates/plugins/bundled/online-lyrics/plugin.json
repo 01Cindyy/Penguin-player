@@ -1,10 +1,10 @@
 {
   "name": "Online Lyrics",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Penguin Player",
   "description": "Finds lyrics on LRCLIB for songs that have none of their own, or better ones if you prefer, when you open them in Now Playing.",
   "api_version": 2,
-  "privacy": "Only the title and artist of songs are sent, and only when you open their lyrics. Unless you prefer online lyrics, that’s only for songs without lyrics of their own.",
+  "privacy": "Only the title, artist and album of songs are sent, and only when you open their lyrics. Unless you prefer online lyrics, that’s only for songs without lyrics of their own.",
   "permissions": {
     "network": ["lrclib.net"]
   },

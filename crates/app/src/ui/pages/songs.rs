@@ -14,7 +14,7 @@ use crate::ui::icons;
 use crate::ui::widgets::browse::{LibraryStatus, follow_library_status};
 use crate::ui::widgets::page_header::PageHeader;
 use crate::ui::widgets::{TrackColumn, TrackList};
-use crate::ui::{disconnect_on_destroy, keep_alive};
+use crate::ui::{disconnect_on_destroy, filter_chip, keep_alive};
 use crate::util::{song_count, total_length};
 
 /// Which songs the filter chips let through.
@@ -191,12 +191,9 @@ impl SongsPage {
                 self.chips.append(&chip_divider());
             }
             previous = Some(filter);
-            let chip = gtk::ToggleButton::builder()
-                .label(filter.label())
-                .tooltip_text(song_count(count))
-                .css_classes(["mp-chip"])
-                .active(filter == self.filter.get())
-                .build();
+            let chip = filter_chip(filter.label(), count);
+            chip.set_tooltip_text(Some(&song_count(count)));
+            chip.set_active(filter == self.filter.get());
             chip.set_group(group.as_ref());
             group.get_or_insert_with(|| chip.clone());
             let weak = Rc::downgrade(self);

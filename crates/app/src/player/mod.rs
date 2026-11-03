@@ -34,6 +34,14 @@ pub const NULL_AUDIO_ENV: &str = "PENGUIN_PLAYER_NULL_AUDIO";
 /// How much the volume shortcuts change the volume.
 pub const VOLUME_STEP: f64 = 0.05;
 
+/// The gain the output plays a volume level at. Loudness follows the logarithm of the
+/// gain, so with the level as the gain everything quiet is crammed into the bottom of
+/// the slider and its top half barely changes. The cube, which PipeWire and PulseAudio
+/// use for their own sliders, spreads loudness evenly across the slider.
+fn output_gain(level: f64) -> f32 {
+    level.clamp(0.0, 1.0).powi(3) as f32
+}
+
 glib::wrapper! {
     /// Owns the audio engine and the play queue, and publishes the playback state.
     ///
@@ -48,7 +56,11 @@ impl Player {
     /// player still works (queue, UI) and [`Self::startup_error`] explains why.
     pub fn new(store: &LibraryStore, settings: &Settings) -> Self {
         let config = EngineConfig {
-            volume: if settings.muted { 0.0 } else { settings.volume },
+            volume: if settings.muted {
+                0.0
+            } else {
+                output_gain(f64::from(settings.volume))
+            },
             gapless: settings.gapless,
             null_output: null_audio_requested(),
         };
@@ -281,12 +293,12 @@ impl Player {
         self.repeat().into()
     }
 
-    /// Volume actually sent to the output: 0 while muted.
-    pub fn effective_volume(&self) -> f32 {
+    /// The gain actually sent to the output: 0 while muted.
+    fn effective_gain(&self) -> f32 {
         if self.muted() {
             0.0
         } else {
-            self.volume() as f32
+            output_gain(self.volume())
         }
     }
 

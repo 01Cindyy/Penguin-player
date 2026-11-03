@@ -423,7 +423,31 @@ impl TrackList {
             view_column.set_sorter(column.sorter().as_ref());
         }
         self.imp().column_view.append_column(&view_column);
+        if column.aligned_to_end() {
+            self.align_last_title_to_end();
+        }
         view_column
+    }
+
+    /// GTK has no setting for this: a column's title always starts at the left. So this
+    /// reaches inside the title of the column just added, and moves its label to the end
+    /// with the sort arrow before it, where it doesn't push the text off the values.
+    fn align_last_title_to_end(&self) {
+        let title = self
+            .imp()
+            .column_view
+            .first_child()
+            .and_then(|header| header.last_child())
+            .and_then(|title| title.first_child())
+            .and_downcast::<gtk::Box>();
+        let Some(title) = title else { return };
+        title.set_halign(gtk::Align::End);
+        if let Some(label) = title.first_child().and_downcast::<gtk::Label>() {
+            label.set_xalign(1.0);
+        }
+        if let Some(arrow) = title.last_child() {
+            title.reorder_child_after(&arrow, None::<&gtk::Widget>);
+        }
     }
 
     /// Creates the [`TrackCell`]s of `column`, with their menu and drag gestures.

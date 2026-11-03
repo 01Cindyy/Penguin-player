@@ -1,6 +1,6 @@
-//! A playlist's artwork: a 2×2 mosaic of different album covers, a single cover
-//! while there are fewer than four to choose from, or the same placeholder as any
-//! cover without art.
+//! A playlist's artwork: the image chosen for it, a 2×2 mosaic of different album
+//! covers, a single cover while there are fewer than four to choose from, or the same
+//! placeholder as any cover without art.
 
 use std::cell::{Cell, OnceCell, RefCell};
 
@@ -9,6 +9,7 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 use mp_core::CoverId;
 
+use crate::model::{LibraryStore, PlaylistObject};
 use crate::services::covers::CoverCache;
 use crate::ui::icons;
 use crate::ui::set_css_class;
@@ -16,6 +17,30 @@ use crate::ui::widgets::{CoverImage, CoverSize};
 
 /// How many covers fill the mosaic.
 pub const MOSAIC_TILES: usize = 4;
+
+/// What shows for `playlist`: the image chosen for it, or else the first covers of
+/// different albums, in playlist order.
+pub fn playlist_covers(store: &LibraryStore, playlist: &PlaylistObject) -> Vec<CoverId> {
+    if let Some(image) = playlist.image() {
+        return vec![image];
+    }
+    let songs = playlist
+        .available_tracks()
+        .into_iter()
+        .filter_map(|id| store.track(id));
+    let mut covers: Vec<CoverId> = Vec::with_capacity(MOSAIC_TILES);
+    for song in songs {
+        if let Some(cover) = &song.track().cover
+            && !covers.contains(cover)
+        {
+            covers.push(cover.clone());
+            if covers.len() == MOSAIC_TILES {
+                break;
+            }
+        }
+    }
+    covers
+}
 
 mod imp {
     use super::*;
@@ -99,6 +124,16 @@ impl CoverMosaic {
         mosaic
     }
 
+    /// A small one with the rounding and shadow of a song row's cover, as beside a
+    /// playlist's name in the sidebar.
+    pub fn small(covers: &CoverCache, size: i32) -> Self {
+        let mosaic = Self::new(covers);
+        mosaic.remove_css_class("mp-cover-large");
+        mosaic.add_css_class("mp-cover-row");
+        mosaic.set_pixel_size(size);
+        mosaic
+    }
+
     /// Changes the width and height, e.g. for narrow pages. The covers are loaded
     /// again at the new size.
     pub fn set_pixel_size(&self, size: i32) {
@@ -106,7 +141,7 @@ impl CoverMosaic {
         if imp.size.replace(size) == size {
             return;
         }
-        imp.placeholder.set_pixel_size(size * 3 / 10);
+        imp.placeholder.set_pixel_size((size * 3 / 10).max(16));
         self.single().set_pixel_size(size);
         for tile in self.tiles() {
             tile.set_pixel_size(size / 2);
@@ -146,5 +181,62 @@ impl CoverMosaic {
 
     fn tiles(&self) -> &[CoverImage] {
         self.imp().tiles.get().expect("set in new")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use mp_core::{Playlist, PlaylistEntry, PlaylistId, PlaylistItemId, TrackId};
+
+    use super::*;
+    use crate::model::test_track;
+
+    #[test]
+    fn playlists_show_their_image_or_else_different_covers_in_order() {
+        let covers = [
+            Some("a"),
+            Some("a"),
+            None,
+            Some("b"),
+            Some("c"),
+            Some("d"),
+            Some("e"),
+        ];
+        let tracks = covers
+            .iter()
+            .enumerate()
+            .map(|(index, cover)| {
+                let mut track = test_track(index as i64 + 1, "t", "a", "b");
+                track.cover = cover.map(|cover| CoverId(cover.to_owned()));
+                track
+            })
+            .collect();
+        let store = LibraryStore::new();
+        store.replace_tracks(tracks);
+        let playlist = |songs: i64, image: Option<&str>| {
+            PlaylistObject::new(Playlist {
+                id: PlaylistId(1),
+                name: "Mix".to_owned(),
+                created: 0,
+                modified: 0,
+                image: image.map(|image| CoverId(image.to_owned())),
+                entries: (1..=songs)
+                    .map(|id| PlaylistEntry {
+                        item: PlaylistItemId(id),
+                        path: format!("/music/{id}.flac").into(),
+                        track: Some(TrackId(id)),
+                    })
+                    .collect(),
+            })
+        };
+        let shown = |songs, image| -> Vec<String> {
+            playlist_covers(&store, &playlist(songs, image))
+                .into_iter()
+                .map(|cover| cover.0)
+                .collect()
+        };
+        assert_eq!(shown(7, None), ["a", "b", "c", "d"]);
+        assert_eq!(shown(2, None), ["a"]);
+        assert_eq!(shown(7, Some("mine")), ["mine"]);
     }
 }

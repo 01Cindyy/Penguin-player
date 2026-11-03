@@ -148,7 +148,7 @@ appdir=/work/appimage/AppDir
 mkdir -p /work/appimage
 cp -a "$stage" "$appdir"
 ln -s "usr/bin/$PROGRAM" "$appdir/AppRun"
-sed "s|^Exec=.*|Exec=$PROGRAM|" "$stage/usr/share/applications/$APP_ID.desktop" \
+sed "s|^Exec=.*|Exec=$PROGRAM %F|" "$stage/usr/share/applications/$APP_ID.desktop" \
     >"$appdir/$APP_ID.desktop"
 cp "$stage/usr/share/icons/hicolor/scalable/apps/$APP_ID.svg" "$appdir/"
 cp "$stage/usr/share/icons/hicolor/32x32/apps/$APP_ID.png" "$appdir/.DirIcon"

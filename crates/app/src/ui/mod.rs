@@ -76,6 +76,48 @@ pub fn icon_toggle(icon_name: &str, tooltip: &str, classes: &[&str]) -> gtk::Tog
     button
 }
 
+/// A vertically centred toggle button with an icon and a short text (`mp-toggle-labelled`).
+pub fn labelled_toggle(icon_name: &str, label: &str) -> gtk::ToggleButton {
+    gtk::ToggleButton::builder()
+        .child(
+            &adw::ButtonContent::builder()
+                .icon_name(icon_name)
+                .label(label)
+                .build(),
+        )
+        .valign(gtk::Align::Center)
+        .css_classes(["flat", "mp-toggle-button", "mp-toggle-labelled"])
+        .build()
+}
+
+/// A filter chip (`mp-chip`): its name, then in a muted style (`mp-chip-count`) how many
+/// things it would show.
+pub fn filter_chip(name: &str, count: usize) -> gtk::ToggleButton {
+    let content = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    content.append(&gtk::Label::new(Some(name)));
+    content.append(
+        &gtk::Label::builder()
+            .label(crate::util::format_count(count))
+            .css_classes(["mp-chip-count", "numeric"])
+            .build(),
+    );
+    gtk::ToggleButton::builder()
+        .child(&content)
+        .css_classes(["mp-chip"])
+        .build()
+}
+
+/// Changes the count a [`filter_chip`] shows.
+pub fn set_filter_chip_count(chip: &gtk::ToggleButton, count: usize) {
+    let label = chip
+        .child()
+        .and_then(|content| content.last_child())
+        .and_downcast::<gtk::Label>();
+    if let Some(label) = label {
+        label.set_label(&crate::util::format_count(count));
+    }
+}
+
 /// A single line of text, cut short with an ellipsis when it doesn't fit.
 pub fn ellipsized_label(classes: &[&str]) -> gtk::Label {
     gtk::Label::builder()
@@ -94,6 +136,13 @@ pub fn link_button(label: &gtk::Label) -> gtk::Button {
         .halign(gtk::Align::Start)
         .css_classes(["flat", "mp-link"])
         .build()
+}
+
+/// Makes a [`link_button`] a link, or plain text where it would lead nowhere (to an
+/// album that isn't in the library, say): then it ignores the pointer and keyboard.
+pub fn set_link_active(button: &gtk::Button, active: bool) {
+    button.set_can_target(active);
+    button.set_focusable(active);
 }
 
 /// Fills in an empty state: plain-text `title` and `description` under `icon_name`,

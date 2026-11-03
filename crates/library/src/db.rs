@@ -10,7 +10,12 @@ use crate::{LibraryError, Result};
 
 /// Schema migrations, applied in order. `PRAGMA user_version` records how many have run,
 /// so a schema change is made by appending a migration, never by editing an applied one.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, PLAYLIST_ITEM_PATHS_V2, FILE_CHANGE_DETAILS_V3];
+const MIGRATIONS: &[&str] = &[
+    SCHEMA_V1,
+    PLAYLIST_ITEM_PATHS_V2,
+    FILE_CHANGE_DETAILS_V3,
+    PLAYLIST_IMAGES_V4,
+];
 
 /// Paths are BLOBs in the encoding of [`crate::paths`]. Ids use AUTOINCREMENT so the id
 /// of a deleted row is never reused while the UI may still hold it.
@@ -68,6 +73,12 @@ CREATE INDEX playlist_items_path ON playlist_items (path);
 const FILE_CHANGE_DETAILS_V3: &str = "
 ALTER TABLE tracks ADD COLUMN modified_nanos INTEGER;
 ALTER TABLE tracks ADD COLUMN folder_images INTEGER;
+";
+
+/// The image chosen for a playlist: its file name, as a cover id. NULL shows the covers
+/// of the playlist's songs.
+const PLAYLIST_IMAGES_V4: &str = "
+ALTER TABLE playlists ADD COLUMN image TEXT;
 ";
 
 /// How long a statement waits for the other connection (UI or scanner) to release its lock.

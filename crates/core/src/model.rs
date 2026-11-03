@@ -159,6 +159,8 @@ pub struct Playlist {
     pub name: String,
     pub created: i64,
     pub modified: i64,
+    /// The image the user chose for it, in place of its songs' covers.
+    pub image: Option<CoverId>,
     pub entries: Vec<PlaylistEntry>,
 }
 

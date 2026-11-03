@@ -237,8 +237,8 @@ impl Player {
     }
 
     fn apply_output_volume(&self) {
-        let volume = self.effective_volume();
-        self.with_backend(|backend| backend.set_volume(volume));
+        let gain = self.effective_gain();
+        self.with_backend(|backend| backend.set_volume(gain));
         self.broadcast(self.volume_event());
     }
 

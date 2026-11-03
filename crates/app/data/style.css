@@ -21,6 +21,22 @@
   --mp-player-bar-surface: var(--mp-player-bar-bg-color);
   --mp-player-bar-fg-color: var(--window-fg-color);
   --mp-cover-shadow: 0 6px 18px rgba(0, 0, 0, 0.19), 0 1px 3px rgba(0, 0, 0, 0.11);
+  --mp-hero-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), 0 4px 12px rgba(0, 0, 0, 0.18);
+  /* Under small art and marks, and under what floats over a page. */
+  --mp-small-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  --mp-floating-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  /* Around cards: an outline and a soft shadow, which grows under the pointer. */
+  --mp-card-shadow: 0 0 0 1px var(--border-color), 0 2px 6px rgba(0, 0, 0, 0.05);
+  --mp-card-hover-shadow: 0 0 0 1px var(--border-color), 0 5px 14px rgba(0, 0, 0, 0.09);
+  /* A glow in the accent colour under the main play buttons. */
+  --mp-play-shadow: 0 3px 10px color-mix(in srgb, var(--accent-bg-color) 40%, transparent);
+  --mp-play-hover-shadow: 0 5px 16px color-mix(in srgb, var(--accent-bg-color) 50%, transparent);
+  /* The letter spacing of large titles. */
+  --mp-title-tracking: -0.3px;
+  /* Over album art, which looks the same whatever the theme. */
+  --mp-cover-scrim-color: rgba(0, 0, 0, 0.5);
+  --mp-cover-scrim-fg-color: white;
+  --mp-knob-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --mp-hires-badge-color: var(--warning-color);
   --mp-lossless-badge-color: var(--accent-color);
 }
@@ -153,13 +169,18 @@ banner.mp-folder-banner {
   padding: calc(var(--mp-spacing) * 1.5) calc(var(--mp-spacing) * 1.5) var(--mp-spacing);
 }
 
-.mp-page-title {
-  letter-spacing: -0.3px;
+/* Small headings: above page titles, over the sidebar's playlists and over track lists. */
+.mp-page-eyebrow,
+.mp-sidebar-heading,
+columnview.mp-track-table > header > button label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
-.mp-page-eyebrow {
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
+.mp-page-title {
+  letter-spacing: var(--mp-title-tracking);
 }
 
 .mp-page-subtitle {
@@ -202,6 +223,15 @@ banner.mp-folder-banner {
   background-image: image(color-mix(in srgb, currentColor 10%, transparent));
 }
 
+.mp-chip-count {
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+.mp-chip:checked .mp-chip-count {
+  opacity: 0.8;
+}
+
 .mp-chip-divider {
   min-height: 18px;
   margin: 0 6px;
@@ -214,7 +244,7 @@ banner.mp-folder-banner {
 }
 
 .mp-section-title {
-  letter-spacing: -0.2px;
+  letter-spacing: var(--mp-title-tracking);
 }
 
 /* The label ends flush with the content; the hover pill reaches into the gutter. */
@@ -272,6 +302,12 @@ columnview.mp-track-table > header > button {
   padding-bottom: 6px;
 }
 
+/* The sort arrow only takes room while the column is sorted, so a title at the end of
+ * its column lines up with the values under it. */
+columnview.mp-track-table > header > button sort-indicator:not(.ascending):not(.descending) {
+  min-width: 0;
+}
+
 columnview.mp-track-table > listview > row {
   border-radius: var(--mp-small-radius);
   margin-bottom: 1px;
@@ -283,7 +319,7 @@ columnview.mp-track-table > listview > row > cell {
 }
 
 .mp-track-title {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .mp-track-duration,
@@ -294,6 +330,59 @@ columnview.mp-track-table > listview > row > cell {
 .mp-track-list .mp-playing .mp-track-title,
 .mp-playing-icon {
   color: var(--accent-color);
+}
+
+/* The playing song's equaliser: bars that bounce at their own pace until paused, and
+ * stay at these heights where animations are off. */
+.mp-equaliser {
+  min-height: 14px;
+}
+
+.mp-equaliser-bar {
+  min-width: 3px;
+  border-radius: 1px;
+  background-color: currentColor;
+  transform-origin: bottom;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.mp-equaliser-bar:nth-child(1) {
+  transform: scaleY(0.55);
+  animation-name: mp-equaliser-1;
+  animation-duration: 610ms;
+}
+
+.mp-equaliser-bar:nth-child(2) {
+  transform: scaleY(1);
+  animation-name: mp-equaliser-2;
+  animation-duration: 470ms;
+}
+
+.mp-equaliser-bar:nth-child(3) {
+  transform: scaleY(0.75);
+  animation-name: mp-equaliser-3;
+  animation-duration: 730ms;
+}
+
+@keyframes mp-equaliser-1 {
+  from { transform: scaleY(0.3); }
+  to { transform: scaleY(0.85); }
+}
+
+@keyframes mp-equaliser-2 {
+  from { transform: scaleY(0.55); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes mp-equaliser-3 {
+  from { transform: scaleY(0.4); }
+  to { transform: scaleY(0.95); }
+}
+
+.mp-paused .mp-equaliser-bar {
+  animation-play-state: paused;
 }
 
 /* Format badges */
@@ -329,7 +418,7 @@ columnview.mp-track-table > listview > row > cell {
 
 .mp-cover.mp-cover-row {
   border-radius: calc(var(--mp-small-radius) * 2 / 3);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--mp-small-shadow);
 }
 
 .mp-cover.mp-cover-large {
@@ -349,8 +438,8 @@ avatar.mp-artist-avatar,
 }
 
 .mp-cover-playing-icon {
-  background-color: rgba(0, 0, 0, 0.5);
-  color: white;
+  background-color: var(--mp-cover-scrim-color);
+  color: var(--mp-cover-scrim-fg-color);
 }
 
 /* Artist images are round, whether a cover or an AdwAvatar. */
@@ -441,6 +530,15 @@ avatar.mp-artist-avatar,
   background-color: color-mix(in srgb, var(--accent-bg-color) 22%, transparent);
 }
 
+/* A button with an icon and a short text, such as Lyrics on Now Playing. */
+button.mp-toggle-labelled {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: var(--mp-pill-radius);
+  font-size: 90%;
+  font-weight: 600;
+}
+
 button.mp-play-button {
   min-width: 42px;
   min-height: 42px;
@@ -449,14 +547,14 @@ button.mp-play-button {
   border-radius: var(--mp-button-radius);
   background-color: var(--accent-bg-color);
   color: var(--accent-fg-color);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-bg-color) 35%, transparent);
+  box-shadow: var(--mp-play-shadow);
   transition: transform 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
     box-shadow 200ms ease-out, background-image 200ms ease-out;
 }
 
 button.mp-play-button:hover {
   background-image: image(color-mix(in srgb, currentColor 10%, transparent));
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-bg-color) 45%, transparent);
+  box-shadow: var(--mp-play-hover-shadow);
   transform: scale(1.04);
 }
 
@@ -493,6 +591,9 @@ scale.mp-volume > trough > slider {
   min-width: 12px;
   min-height: 12px;
   margin: -4px;
+  border: none;
+  background-color: currentColor;
+  box-shadow: var(--mp-knob-shadow);
   opacity: 0;
   transition: opacity 150ms ease-out;
 }
@@ -508,6 +609,27 @@ scale.mp-volume:focus-visible > trough > slider {
 
 scale.mp-volume.mp-muted > trough > highlight {
   background-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+/* The Waveform Seek Bar: the slider stays to take the pointer and the keyboard, but it
+ * is the waveform under it that shows (SeekBar hides what the trough holds). */
+.mp-waveform {
+  margin: 0 6px;
+  color: var(--accent-color);
+}
+
+.mp-seek-waveform scale.mp-seek-bar {
+  padding: 0 6px;
+}
+
+.mp-seek-waveform scale.mp-seek-bar > trough {
+  background: none;
+}
+
+.mp-seek-waveform scale.mp-seek-bar:focus-visible > trough {
+  outline: 2px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--mp-small-radius);
 }
 
 /* Compact bar: transport at the end, the seek bar as a thin line along the top. */
@@ -551,7 +673,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 
 .mp-cover.mp-cover-hero {
   border-radius: calc(var(--mp-cover-radius) * 2);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), 0 4px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--mp-hero-shadow);
 }
 
 .mp-now-playing-page .mp-now-byline {
@@ -577,12 +699,13 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 .mp-now-playing-page button.mp-play-button {
-  min-width: 56px;
-  min-height: 56px;
+  min-width: 60px;
+  min-height: 60px;
+  margin: 0;
 }
 
-.mp-now-playing-page .mp-player-extras {
-  margin-top: 6px;
+.mp-now-divider {
+  margin: 12px 0 8px;
 }
 
 /* The lyrics beside the art take the page's right half, over the same backdrop. */
@@ -595,15 +718,20 @@ scale.mp-volume.mp-muted > trough > highlight {
   margin: 56px 32px 32px 0;
 }
 
-/* Lyrics: timed lines are dim except the one being sung; plain ones are smaller. */
+/* Lyrics: timed lines are dim, more so once sung, and the one being sung stands out and
+ * grows; plain ones are smaller. */
 
 .mp-lyrics list {
   background: none;
 }
 
+.mp-lyrics-scrollbar-hidden > scrollbar {
+  opacity: 0;
+}
+
 .mp-lyrics row {
   padding: 6px 12px;
-  border-radius: 12px;
+  border-radius: var(--mp-panel-radius);
   transition: opacity 300ms ease-out, background-color 150ms ease-out;
 }
 
@@ -612,12 +740,25 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 .mp-lyrics-line {
-  font-size: 1.5em;
+  font-size: 1.6em;
   font-weight: 800;
+  transition: font-size 300ms ease-out;
 }
 
-.mp-lyrics list.mp-lyrics-synced row:not(.mp-lyrics-current) {
-  opacity: 0.4;
+.mp-lyrics list.mp-lyrics-synced row {
+  opacity: 0.58;
+}
+
+.mp-lyrics list.mp-lyrics-synced row.mp-lyrics-sung {
+  opacity: 0.3;
+}
+
+.mp-lyrics list.mp-lyrics-synced row.mp-lyrics-current {
+  opacity: 1;
+}
+
+.mp-lyrics list.mp-lyrics-synced row.mp-lyrics-current .mp-lyrics-line {
+  font-size: 2em;
 }
 
 .mp-lyrics list:not(.mp-lyrics-synced) .mp-lyrics-line {

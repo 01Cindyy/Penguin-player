@@ -8,14 +8,14 @@ use std::rc::{Rc, Weak};
 
 use adw::prelude::*;
 use gtk::{gio, glib};
-use mp_core::{CoverId, PlaylistEntry, PlaylistId, PlaylistItemId, TrackId};
+use mp_core::{PlaylistEntry, PlaylistId, PlaylistItemId, TrackId};
 
 use crate::context::{AppContext, plain_toast};
 use crate::model::{TrackObject, sync_list_store};
 use crate::ui::icons;
 use crate::ui::navigation::Route;
 use crate::ui::widgets::collections::{
-    CoverMosaic, DistinctRows, MOSAIC_TILES, MissingEntries, playlist_actions, reorder,
+    CoverMosaic, DistinctRows, MissingEntries, playlist_actions, playlist_covers, reorder,
 };
 use crate::ui::widgets::{CoverSize, PageHeader, TrackColumn, TrackList};
 use crate::ui::{disconnect_on_destroy, keep_alive, set_css_class, track_actions};
@@ -63,6 +63,7 @@ struct PlaylistPage {
     id: PlaylistId,
     header: PageHeader,
     mosaic: CoverMosaic,
+    menu_button: gtk::MenuButton,
     play: gtk::Button,
     shuffle: gtk::Button,
     /// The playlist's songs that are in the library, in playlist order.
@@ -89,9 +90,7 @@ impl PlaylistPage {
             play.set_tooltip_text(Some("Play this playlist in order"));
             let shuffle = header.add_button(icons::SHUFFLE, "_Shuffle", false);
             shuffle.set_tooltip_text(Some("Play this playlist in random order"));
-            header
-                .add_menu_button()
-                .set_menu_model(Some(&playlist_actions::menu(id, false)));
+            let menu_button = header.add_menu_button();
 
             let tracks = gio::ListStore::new::<TrackObject>();
             let list = song_list(ctx, &tracks, weak.clone());
@@ -120,6 +119,7 @@ impl PlaylistPage {
                 id,
                 header,
                 mosaic,
+                menu_button,
                 play,
                 shuffle,
                 tracks,
@@ -196,6 +196,10 @@ impl PlaylistPage {
             self.leave();
             return;
         };
+        self.mosaic
+            .set_covers(&playlist_covers(&self.ctx.store, &playlist));
+        self.menu_button
+            .set_menu_model(Some(&playlist_actions::menu(&playlist, false)));
         let playlist = playlist.playlist();
         let mut rows = Vec::with_capacity(playlist.entries.len());
         let mut tracks = Vec::with_capacity(playlist.entries.len());
@@ -219,7 +223,6 @@ impl PlaylistPage {
             page.set_title(&playlist.name);
         }
         self.header.set_subtitle(&summary(&tracks, missing.len()));
-        self.mosaic.set_covers(&mosaic_covers(&tracks));
         self.play.set_sensitive(!tracks.is_empty());
         self.shuffle.set_sensitive(!tracks.is_empty());
         self.update_empty_state(!tracks.is_empty(), !missing.is_empty());
@@ -509,48 +512,10 @@ fn summary(tracks: &[TrackObject], missing: usize) -> String {
     parts.join(" · ")
 }
 
-/// The first covers of different albums, in playlist order, for the mosaic.
-fn mosaic_covers(tracks: &[TrackObject]) -> Vec<CoverId> {
-    let mut covers: Vec<CoverId> = Vec::with_capacity(MOSAIC_TILES);
-    for cover in tracks
-        .iter()
-        .filter_map(|track| track.track().cover.as_ref())
-    {
-        if !covers.contains(cover) {
-            covers.push(cover.clone());
-            if covers.len() == MOSAIC_TILES {
-                break;
-            }
-        }
-    }
-    covers
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::test_track;
-
-    #[test]
-    fn mosaic_uses_distinct_covers_in_order() {
-        let track = |id: i64, cover: Option<&str>| {
-            let mut track = test_track(id, "t", "a", "b");
-            track.cover = cover.map(|c| CoverId(c.to_owned()));
-            TrackObject::new(track)
-        };
-        let tracks = vec![
-            track(1, Some("a")),
-            track(2, Some("a")),
-            track(3, None),
-            track(4, Some("b")),
-            track(5, Some("c")),
-            track(6, Some("d")),
-            track(7, Some("e")),
-        ];
-        let covers: Vec<String> = mosaic_covers(&tracks).into_iter().map(|c| c.0).collect();
-        assert_eq!(covers, ["a", "b", "c", "d"]);
-        assert_eq!(mosaic_covers(&tracks[..2]).len(), 1);
-    }
 
     #[test]
     fn summary_mentions_missing_files() {

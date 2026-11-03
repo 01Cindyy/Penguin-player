@@ -35,23 +35,20 @@ impl CardKind {
 /// grid's columns, which stay close to it at every width.
 pub(super) const CARD_ART_SIZE: i32 = 200;
 /// The smallest card art; it decides how many columns fit.
-pub(super) const CARD_ART_MIN_SIZE: i32 = 148;
+pub(super) const CARD_ART_MIN_SIZE: i32 = 176;
 
 /// Scales `image` (of [`CARD_ART_SIZE`]) to the card's width and stacks the play
-/// button over its bottom corner. The button appears while the card is hovered (see
-/// browse.css) and stays out of the focus chain: keyboard users play from the card's
-/// menu or page.
+/// button over its bottom corner. The button appears while the card is hovered or has
+/// the keyboard focus (see browse.css), and Tab reaches it from the card.
 pub(super) fn card_art(
     card: &impl IsA<gtk::Widget>,
     image: &impl IsA<gtk::Widget>,
     play: &gtk::Button,
 ) -> gtk::Overlay {
     play.set_icon_name(icons::PLAY);
-    play.add_css_class("circular");
     play.add_css_class("mp-card-play");
     play.set_halign(gtk::Align::End);
     play.set_valign(gtk::Align::End);
-    play.set_focusable(false);
     play.set_focus_on_click(false);
     // Only clickable while shown, so a tap on a touch screen opens the card instead.
     play.set_can_target(false);
@@ -76,6 +73,19 @@ pub(super) fn card_label(label: &gtk::Label, xalign: f32) -> &gtk::Label {
     label.set_xalign(xalign);
     label.set_ellipsize(gtk::pango::EllipsizeMode::End);
     label.set_single_line_mode(true);
+    label.set_max_width_chars(1);
+    label.set_hexpand(true);
+    label
+}
+
+/// Makes `label` a title of up to two lines, then cut short with an ellipsis, that takes
+/// the card's width rather than widening the card to fit its text.
+pub(super) fn card_title(label: &gtk::Label) -> &gtk::Label {
+    label.set_xalign(0.0);
+    label.set_wrap(true);
+    label.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+    label.set_lines(2);
+    label.set_ellipsize(gtk::pango::EllipsizeMode::End);
     label.set_max_width_chars(1);
     label.set_hexpand(true);
     label

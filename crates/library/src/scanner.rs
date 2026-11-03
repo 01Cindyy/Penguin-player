@@ -362,6 +362,38 @@ fn read_files(
         .collect()
 }
 
+/// See [`crate::read_songs`].
+pub(crate) fn read_songs(paths: &[PathBuf], covers_dir: &Path) -> Result<Vec<Option<Track>>> {
+    let covers = CoverStore::open(covers_dir)?;
+    let added = unix_now();
+    let files: Vec<Option<DiskFile>> = paths.iter().map(|path| song_file(path)).collect();
+    thread::scope(|scope| {
+        thread::Builder::new()
+            .name("tag-reader".into())
+            .stack_size(TAG_READER_STACK_BYTES)
+            .spawn_scoped(scope, || {
+                files
+                    .iter()
+                    .map(|file| Some(read_file(file.as_ref()?, &covers, added)?.track))
+                    .collect()
+            })?
+            .join()
+            .map_err(|_| LibraryError::Io(io::Error::other("the tag reader stopped")))
+    })
+}
+
+/// The song at `path` as a scan finds it; `None` for a folder, or a file that isn't a
+/// song.
+fn song_file(path: &Path) -> Option<DiskFile> {
+    let path = paths::normalize(path);
+    if !fs::metadata(&path).is_ok_and(|metadata| metadata.is_file()) {
+        return None;
+    }
+    let mut disk = DiskState::default();
+    disk.add_path(&path);
+    disk.take_files().pop()
+}
+
 /// Reads one file's tags and cover. A panic inside a tag parser is caught, so one broken
 /// file can't take the scan (or the app) down; it is logged and counted as failed.
 fn read_file(file: &DiskFile, covers: &CoverStore, added: i64) -> Option<ScannedTrack> {

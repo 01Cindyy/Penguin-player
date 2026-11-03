@@ -1,6 +1,10 @@
 //! The playing song's lyrics. Timed lyrics follow the song: the line being sung
-//! stands out (`mp-lyrics-current`) and is kept in view, and clicking a line jumps
-//! there. Scrolling the lyrics by hand stops them following for a few seconds.
+//! stands out (`mp-lyrics-current`) and is kept in view, lines already sung are dimmer
+//! (`mp-lyrics-sung`), and clicking a line jumps there. Scrolling the lyrics by hand
+//! stops them following for a few seconds.
+//!
+//! GTK shows a scrollbar whenever anything scrolls, so `mp-lyrics-scrollbar-hidden` hides
+//! it again after automatic scrolling, until the pointer moves or the user scrolls.
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::rc::Rc;
@@ -19,12 +23,14 @@ const SCROLL_MS: u32 = 500;
 /// How long after the user scrolls the lyrics they follow the song again.
 const FOLLOW_AGAIN_AFTER: Duration = Duration::from_secs(4);
 /// How far down the view the line being sung is kept, as a fraction of its height.
-const CURRENT_LINE_AT: f64 = 0.4;
+const CURRENT_LINE_AT: f64 = 0.48;
 /// Lines change on time even between the player's position reports, which come
 /// about this often.
 const POSITION_REPORTS: Duration = Duration::from_millis(250);
-/// Height of the faded top and bottom edges, in pixels.
-const FADE: f32 = 48.0;
+/// Height of the faded top and bottom edges, as fractions of the view's height.
+const FADE_TOP: f32 = 0.18;
+const FADE_BOTTOM: f32 = 0.22;
+const HIDDEN_SCROLLBAR: &str = "mp-lyrics-scrollbar-hidden";
 const PAUSE_TEXT: &str = "♪";
 const NO_LYRICS: &str = "Lyrics show here when the song has them in its tags, or in an \
                          .lrc file of the same name beside it.";
@@ -93,9 +99,10 @@ mod imp {
             let adjustment = parts.scrolled.vadjustment();
             let above = adjustment.value() as f32;
             let below = (adjustment.upper() - adjustment.page_size()) as f32 - above;
-            let (top, bottom) = (above.clamp(0.0, FADE), below.clamp(0.0, FADE));
+            let top = above.clamp(0.0, FADE_TOP * height);
+            let bottom = below.clamp(0.0, FADE_BOTTOM * height);
             if parts.stack.visible_child_name().as_deref() != Some("lines")
-                || height <= 2.0 * FADE
+                || height <= 0.0
                 || top + bottom <= 0.0
             {
                 return self.parent_snapshot(snapshot);
@@ -143,6 +150,7 @@ impl LyricsView {
             .hscrollbar_policy(gtk::PolicyType::Never)
             .child(&list)
             .vexpand(true)
+            .css_classes([HIDDEN_SCROLLBAR])
             .build();
         let missing = adw::StatusPage::builder()
             .icon_name(icons::LYRICS)
@@ -202,6 +210,7 @@ impl LyricsView {
         } else {
             NO_LYRICS
         }));
+        parts.scrolled.add_css_class(HIDDEN_SCROLLBAR);
         parts.list.remove_all();
         self.imp().current.set(None);
         if let Some(lyrics) = &lyrics {
@@ -307,10 +316,26 @@ impl LyricsView {
             }
         });
         scrolled.add_controller(drag);
+
+        // GTK also reports the pointer as moving whenever the layout changes under it,
+        // so this checks that it really has.
+        let pointer = gtk::EventControllerMotion::new();
+        pointer.set_propagation_phase(gtk::PropagationPhase::Capture);
+        let last_seen = Cell::new(None);
+        let weak = scrolled.downgrade();
+        pointer.connect_motion(move |_, x, y| {
+            if last_seen.replace(Some((x, y))) != Some((x, y))
+                && let Some(scrolled) = weak.upgrade()
+            {
+                scrolled.remove_css_class(HIDDEN_SCROLLBAR);
+            }
+        });
+        scrolled.add_controller(pointer);
     }
 
     fn stop_following(&self) {
         let imp = self.imp();
+        self.parts().scrolled.remove_css_class(HIDDEN_SCROLLBAR);
         if let Some(scroll) = imp.scroll.get() {
             scroll.pause();
         }
@@ -404,11 +429,20 @@ impl LyricsView {
         let row = |index: Option<usize>| {
             index.and_then(|index| list.row_at_index(i32::try_from(index).ok()?))
         };
-        if let Some(row) = row(self.imp().current.replace(line)) {
+        let previous = self.imp().current.replace(line);
+        if let Some(row) = row(previous) {
             row.remove_css_class("mp-lyrics-current");
         }
         if let Some(row) = row(line) {
             row.add_css_class("mp-lyrics-current");
+        }
+        // Only the lines between the old and new place change, which may be many after
+        // a seek.
+        let (old_end, new_end) = (previous.unwrap_or(0), line.unwrap_or(0));
+        for index in old_end.min(new_end)..old_end.max(new_end) {
+            if let Some(row) = row(Some(index)) {
+                set_css_class(&row, "mp-lyrics-sung", index < new_end);
+            }
         }
         if self.is_following() {
             self.scroll_to_current(true);
@@ -420,6 +454,7 @@ impl LyricsView {
     fn scroll_to_current(&self, animate: bool) {
         let imp = self.imp();
         let parts = self.parts();
+        parts.scrolled.add_css_class(HIDDEN_SCROLLBAR);
         let adjustment = parts.scrolled.vadjustment();
         let current = imp
             .current

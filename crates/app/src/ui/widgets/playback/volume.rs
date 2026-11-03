@@ -9,6 +9,7 @@ use gtk::glib;
 
 use super::follow;
 use crate::context::AppContext;
+use crate::ui::shortcuts::primary;
 use crate::ui::{disconnect_on_destroy, icon_button, icons, set_css_class, set_tooltip};
 
 struct Parts {
@@ -62,7 +63,7 @@ impl VolumeControls {
                 .width_request(110)
                 .valign(gtk::Align::Center)
                 .css_classes(["mp-volume"])
-                .tooltip_text("Volume (Ctrl+↑ / Ctrl+↓)")
+                .tooltip_text(format!("Volume ({} / {})", primary("↑"), primary("↓")))
                 .build(),
         };
         parts.slider.set_range(0.0, 1.0);
@@ -96,6 +97,15 @@ impl VolumeControls {
         assert!(imp.parts.set(parts).is_ok(), "set once in new");
         controls.update_icon();
         controls
+    }
+
+    /// Lets the slider take all the width the controls are given.
+    pub fn fill_width(&self) {
+        self.set_hexpand(true);
+        if let Some(parts) = self.imp().parts.get() {
+            parts.slider.set_hexpand(true);
+            parts.slider.set_width_request(60);
+        }
     }
 
     fn update_icon(&self) {

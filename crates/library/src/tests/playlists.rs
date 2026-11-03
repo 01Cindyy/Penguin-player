@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use mp_core::{PlaylistId, PlaylistItemId, TrackId};
+use mp_core::{CoverId, PlaylistId, PlaylistItemId, TrackId};
 
 use super::fixtures::{TestLibrary, TestTags, write_wav};
 use crate::LibraryError;
@@ -322,4 +322,26 @@ fn reorder_rejects_anything_but_a_permutation() {
 
     let empty = lib.library.create_playlist("Empty").unwrap();
     lib.library.reorder_playlist(empty, &[]).unwrap();
+}
+
+#[test]
+fn playlists_keep_the_image_chosen_for_them() {
+    let lib = TestLibrary::new();
+    let id = lib.library.create_playlist("Mix").unwrap();
+    let image = |lib: &TestLibrary| lib.library.playlist(id).unwrap().unwrap().image;
+    assert_eq!(image(&lib), None);
+
+    let chosen = CoverId("playlist-1-ab.png".to_owned());
+    lib.library.set_playlist_image(id, Some(&chosen)).unwrap();
+    assert_eq!(image(&lib), Some(chosen.clone()));
+    assert_eq!(lib.library.playlists().unwrap()[0].image, Some(chosen));
+
+    lib.library.set_playlist_image(id, None).unwrap();
+    assert_eq!(image(&lib), None);
+
+    let missing = PlaylistId(id.0 + 1);
+    assert!(matches!(
+        lib.library.set_playlist_image(missing, None),
+        Err(LibraryError::Invalid(_))
+    ));
 }

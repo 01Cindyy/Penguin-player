@@ -17,6 +17,7 @@ use crate::services::covers::CoverCache;
 use crate::services::library::LibraryService;
 use crate::services::plugins::PluginService;
 use crate::services::theme::ThemeManager;
+use crate::services::waveforms::Waveforms;
 use crate::ui::navigation::Navigator;
 
 /// Settings changes are written to disk once they have been quiet for this long,
@@ -40,6 +41,8 @@ pub struct AppContext {
     pub navigator: Navigator,
     /// Settings that change what several widgets show; widgets bind to it.
     pub display: DisplayOptions,
+    /// The playing song's waveform, for the Waveform Seek Bar.
+    pub waveforms: Waveforms,
     /// Main-thread database connection for quick reads and playlist edits.
     /// `None` if the database could not be opened (the user has been told).
     library: Option<Library>,
@@ -72,6 +75,7 @@ impl AppContext {
             library_service: LibraryService::new(),
             navigator: Navigator::new(weak.clone()),
             display: DisplayOptions::new(&settings),
+            waveforms: Waveforms::new(&paths),
             paths,
             store,
             player,
@@ -98,6 +102,12 @@ impl AppContext {
                 ctx.toast(message);
             }
         });
+        let weak = Rc::downgrade(&ctx);
+        ctx.player.connect_current_track_notify(move |_| {
+            if let Some(ctx) = weak.upgrade() {
+                ctx.update_waveform();
+            }
+        });
         ctx
     }
 
@@ -116,6 +126,13 @@ impl AppContext {
         self.plugins.shutdown();
         self.save_settings_now();
         self.player.shutdown();
+        self.waveforms.show(None);
+        // Covers of songs from outside the library are only kept while the app runs.
+        if let Err(err) = std::fs::remove_dir_all(self.paths.opened_covers_dir())
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            log::debug!("Could not remove the opened songs’ covers: {err}");
+        }
     }
 
     pub fn settings(&self) -> Ref<'_, Settings> {
@@ -178,6 +195,8 @@ impl AppContext {
     /// Sets how rounded the interface is and remembers it.
     pub fn set_corner_style(&self, corners: CornerStyle) {
         self.update_settings(|settings| settings.corners = corners);
+        self.display
+            .set_bar_radius(crate::display::bar_radius(corners));
         self.apply_appearance();
     }
 
@@ -236,6 +255,23 @@ impl AppContext {
     pub fn set_quality_details(&self, enabled: bool) {
         self.update_settings(|settings| settings.quality_details = enabled);
         self.display.set_quality_details(enabled);
+    }
+
+    /// Uses the song's waveform as the seek bar or a plain line, and remembers the choice.
+    pub fn set_waveform_seek_bar(&self, enabled: bool) {
+        self.update_settings(|settings| settings.waveform_seek_bar = enabled);
+        self.display.set_waveform_seek_bar(enabled);
+        self.update_waveform();
+    }
+
+    /// Gets the playing song's waveform while the seek bar shows it.
+    fn update_waveform(&self) {
+        let track = self
+            .player
+            .current_track()
+            .filter(|_| self.display.waveform_seek_bar());
+        self.waveforms
+            .show(track.as_ref().map(|track| track.track()));
     }
 
     pub fn set_gapless(&self, enabled: bool) {

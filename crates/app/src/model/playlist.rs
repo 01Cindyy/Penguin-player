@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use gtk::glib;
 use gtk::glib::prelude::*;
 use gtk::glib::subclass::prelude::*;
-use mp_core::{Playlist, PlaylistEntry, PlaylistId, TrackId};
+use mp_core::{CoverId, Playlist, PlaylistEntry, PlaylistId, TrackId};
 
 mod imp {
     use std::marker::PhantomData;
@@ -74,6 +74,11 @@ impl PlaylistObject {
         self.imp().with(Clone::clone)
     }
 
+    /// The image the user chose for the playlist.
+    pub fn image(&self) -> Option<CoverId> {
+        self.imp().with(|p| p.image.clone())
+    }
+
     pub fn entries(&self) -> Vec<PlaylistEntry> {
         self.imp().with(|p| p.entries.clone())
     }
@@ -99,7 +104,7 @@ impl PlaylistObject {
         }
     }
 
-    /// Called whenever the playlist's name or entries change.
+    /// Called whenever the playlist's name, entries or image change.
     pub fn connect_changed<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_closure(
             "changed",

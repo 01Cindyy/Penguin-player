@@ -2,8 +2,8 @@
 
 Penguin Player is an offline, native music player written in Rust with a GTK4 +
 libadwaita interface. Linux is the first target. Nothing here should assume Linux
-outside clearly isolated, `cfg`-gated modules, so Windows and macOS builds stay
-possible.
+outside clearly isolated, `cfg`-gated modules, so Windows builds, and any others later,
+stay possible.
 
 ## Workspace
 
@@ -40,6 +40,7 @@ The backend crates never depend on each other or on GTK, so each can be tested a
 | Library worker (one, long-lived) | `app` (`services::library`) using `mp-library` | `async_channel` |
 | Folder watcher | `mp-library::LibraryWatcher` | queues jobs on the library worker |
 | Cover decoding | `app` (`services::covers`) on GIO's blocking pool | `gio::spawn_blocking` futures |
+| Waveform analysis | `app` (`services::waveforms`) on GIO's blocking pool, with `mp_audio::analyse_waveform` | `gio::spawn_blocking` futures |
 | Plugin host | `mp-plugins` | `async_channel::Receiver<HostEvent>` |
 | Plugin web requests (one each) | `mp-plugins` (`http`, ureq) | the plugin host's inbox |
 | Discord connection (once a plugin shows something) | `mp-plugins` (`discord`) | — (fed by the plugin host) |
@@ -185,7 +186,12 @@ crates/app/
       blur.rs               Blur behind the translucent window (Wayland, cfg-gated).
       plugins.rs            PluginService: runs the Lua host, forwards player events,
                             keeps permissions and plugin settings, asks for lyrics.
-      media_controls.rs     MPRIS / Now Playing (cfg-gated, isolated).
+      media_controls.rs     MPRIS / Windows media overlay (cfg-gated, isolated).
+      waveforms.rs          The playing song's waveform for the Waveform Seek Bar: from the
+                            cache, or measured in the background the first time it plays.
+      opened_files.rs       "Open With" and files on the command line: library songs play as
+                            themselves, others are read like a scan and kept in the
+                            LibraryStore for the session (negative ids, own covers folder).
     ui/
       window.rs             The main window (layout above) and its breakpoints.
       navigation.rs         Route (names a page) and Navigator (builds and shows it).
@@ -209,6 +215,10 @@ crates/app/
         format_badge.rs     FLAC / Hi-Res / lossless badges.
         song_heading.rs     The cover + title + artist start of every song row.
         visualizer.rs       The spectrum bars above the seek bar.
+        waveform.rs         The song's waveform, which the seek slider sits on top of when the
+                            Waveform Seek Bar is on. The slider still takes the pointer and keys.
+        equaliser.rs        The bouncing bars that mark the playing song (CSS animation).
+        match_width.rs      Keeps Now Playing's controls as wide as the art.
         resize_handle.rs    The draggable edges of the sidebar, queue and player bar.
         balanced_row.rs     The player bar's three columns, controls always centred.
         playback/           Transport buttons, seek bar and volume, shared by the player
@@ -359,8 +369,8 @@ platform theme. To add one, copy a symbolic SVG there, add a constant to
 
 ## Files on disk
 
-Resolved by `mp_core::AppPaths` (XDG on Linux, `~/Library` on macOS, `%APPDATA%` on
-Windows; everything under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
+Resolved by `mp_core::AppPaths` (XDG on Linux, `%APPDATA%` on Windows; everything
+under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
 
 | Path | Linux default | Contents |
 |---|---|---|

@@ -57,7 +57,7 @@ mod imp {
                 layout: gtk::Box::new(gtk::Orientation::Horizontal, 24),
                 leading: adw::Bin::new(),
                 text: gtk::Box::new(gtk::Orientation::Vertical, 6),
-                eyebrow: label(&["mp-page-eyebrow", "caption-heading", "dim-label"]),
+                eyebrow: label(&["mp-page-eyebrow", "dim-label"]),
                 title: label(&["mp-page-title", "title-1"]),
                 subtitle: label(&["mp-page-subtitle", "dim-label"]),
                 details: gtk::Box::new(gtk::Orientation::Vertical, 6),

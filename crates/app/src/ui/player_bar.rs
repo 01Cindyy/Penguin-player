@@ -3,7 +3,8 @@
 //!
 //! Dragging its top edge makes the visualiser taller or shorter, and off when dragged
 //! low enough. The visualiser only takes room while music plays: it unfolds when
-//! playback starts and folds away shortly after it stops.
+//! playback starts and folds away shortly after it stops. With the Waveform Seek Bar on,
+//! the waveform takes its place: it is always there, and the edge sets its height.
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::rc::Rc;
@@ -22,7 +23,9 @@ use crate::ui::widgets::{
     BalancedRow, CoverImage, CoverSize, FormatBadge, Grows, Resizable, SeekBar, TransportControls,
     Visualizer, VolumeControls, resize_handle,
 };
-use crate::ui::{ellipsized_label, icon_toggle, icons, link_button, set_css_class};
+use crate::ui::{
+    ellipsized_label, icon_toggle, icons, link_button, set_css_class, set_link_active,
+};
 
 /// The widest the transport controls and seek bar grow.
 const CONTROLS_MAX_WIDTH: i32 = 620;
@@ -246,6 +249,11 @@ impl PlayerBar {
             self,
             move |_| bar.update_quality()
         ));
+        display.connect_waveform_seek_bar_notify(glib::clone!(
+            #[weak(rename_to = bar)]
+            self,
+            move |_| bar.update_visualizer_visibility()
+        ));
     }
 
     fn update_track(&self) {
@@ -263,6 +271,16 @@ impl PlayerBar {
                 w.now
                     .artist_button
                     .set_tooltip_text(Some(&format!("Go to {}", track.album_artist())));
+                // A song opened from outside the library may have neither.
+                let store = &self.ctx().store;
+                set_link_active(
+                    &w.now.title_button,
+                    store.album(&track.album_key()).is_some(),
+                );
+                set_link_active(
+                    &w.now.artist_button,
+                    store.artist(&track.artist_key()).is_some(),
+                );
             }
             None => {
                 w.now.title.set_label("Not Playing");
@@ -306,7 +324,8 @@ impl PlayerBar {
         if let Some(source) = imp.fold_timeout.take() {
             source.remove();
         }
-        let allowed = self.ctx().display.visualizer() && !self.compact();
+        let display = &self.ctx().display;
+        let allowed = display.visualizer() && !display.waveform_seek_bar() && !self.compact();
         if !allowed || imp.resizing.get() {
             self.reveal_visualizer_now(if allowed { 1.0 } else { 0.0 });
         } else if imp.playing.get() {
@@ -357,6 +376,7 @@ impl PlayerBar {
     fn apply_visualizer_size(&self) {
         let imp = self.imp();
         let Some(w) = imp.widgets.get() else { return };
+        w.seek_bar.set_waveform_height(imp.visualizer_height.get());
         let visualizer = &w.visualizer;
         let reveal = imp.visualizer_reveal.get();
         visualizer.set_visible(reveal > 0.0);
@@ -439,7 +459,9 @@ impl Resizable for glib::WeakRef<PlayerBar> {
             return 0.0;
         };
         let imp = bar.imp();
-        if bar.ctx().display.visualizer() && imp.visualizer_reveal.get() > 0.0 {
+        let display = &bar.ctx().display;
+        let shown = display.visualizer() && imp.visualizer_reveal.get() > 0.0;
+        if shown || display.waveform_seek_bar() {
             f64::from(imp.visualizer_height.get())
         } else {
             0.0
@@ -448,6 +470,11 @@ impl Resizable for glib::WeakRef<PlayerBar> {
 
     fn resize(&self, size: f64) {
         let Some(bar) = self.upgrade() else { return };
+        // The waveform is the seek bar, so unlike the visualiser it can't be turned off.
+        if bar.ctx().display.waveform_seek_bar() {
+            bar.set_visualizer_height(size.round() as i32);
+            return;
+        }
         bar.imp().resizing.set(true);
         let enabled = size >= VISUALIZER_OFF_BELOW;
         if enabled {
@@ -464,7 +491,8 @@ impl Resizable for glib::WeakRef<PlayerBar> {
         let Some(bar) = self.upgrade() else { return };
         bar.imp().resizing.set(false);
         bar.update_visualizer_visibility();
-        if !bar.ctx().display.visualizer() {
+        let display = &bar.ctx().display;
+        if !display.visualizer() && !display.waveform_seek_bar() {
             bar.set_visualizer_height(WindowState::default().visualizer_height);
         }
         let height = bar.imp().visualizer_height.get();
@@ -478,6 +506,10 @@ fn build_layout(ctx: &Rc<AppContext>) -> (gtk::Box, Widgets) {
     let transport = TransportControls::new(ctx);
     let seek_bar = SeekBar::new(ctx);
     let visualizer = Visualizer::new(ctx.player.scope());
+    ctx.display
+        .bind_property("bar-radius", &visualizer, "bar-radius")
+        .sync_create()
+        .build();
     seek_bar.set_above(&visualizer);
     let extras = extras(ctx);
 

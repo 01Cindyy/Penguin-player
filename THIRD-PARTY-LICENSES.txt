@@ -51,7 +51,7 @@ option the GNU Lesser General Public License version 3
 
 
 OVERVIEW
-    MIT License: 214 crates
+    MIT License: 262 crates
     ISC License: 21 crates
     BSD 3-Clause "New" or "Revised" License: 17 crates
     Mozilla Public License 2.0: 17 crates
@@ -2766,6 +2766,44 @@ DEALINGS IN THE SOFTWARE.
 MIT License
 
 Used by:
+    cocoa-foundation 0.1.2  https://github.com/servo/core-foundation-rs
+    cocoa 0.24.1  https://github.com/servo/core-foundation-rs
+    core-foundation-sys 0.8.7  https://github.com/servo/core-foundation-rs
+    core-foundation 0.9.4  https://github.com/servo/core-foundation-rs
+    core-graphics-types 0.1.3  https://github.com/servo/core-foundation-rs
+    core-graphics 0.22.3  https://github.com/servo/core-foundation-rs
+
+Copyright (c) 2012-2013 Mozilla Foundation
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+MIT License
+
+Used by:
     percent-encoding 2.3.2  https://github.com/servo/rust-url/
 
 Copyright (c) 2013-2025 The rust-url developers
@@ -2864,6 +2902,39 @@ THE SOFTWARE.
 MIT License
 
 Used by:
+    errno 0.3.14  https://github.com/lambda-fairy/rust-errno
+
+Copyright (c) 2014 Chris Wong
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+MIT License
+
+Used by:
     primal-check 0.3.4  https://github.com/huonw/primal
 
 Copyright (c) 2014 Huon Wilson
@@ -2896,6 +2967,7 @@ DEALINGS IN THE SOFTWARE.
 MIT License
 
 Used by:
+    bitflags 1.3.2  https://github.com/bitflags/bitflags
     bitflags 2.13.2  https://github.com/bitflags/bitflags
     log 0.4.34  https://github.com/rust-lang/log
     num-complex 0.4.6  https://github.com/rust-num/num-complex
@@ -3026,6 +3098,7 @@ DEALINGS IN THE SOFTWARE.
 MIT License
 
 Used by:
+    coreaudio-rs 0.14.2  https://github.com/RustAudio/coreaudio-rs.git
     either 1.19.0  https://github.com/rayon-rs/either
 
 Copyright (c) 2015
@@ -3709,6 +3782,34 @@ DEALINGS IN THE SOFTWARE.
 MIT License
 
 Used by:
+    foreign-types-shared 0.1.1  https://github.com/sfackler/foreign-types
+    foreign-types 0.3.2  https://github.com/sfackler/foreign-types
+
+Copyright (c) 2017 The foreign-types Developers
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+================================================================================
+MIT License
+
+Used by:
     version-compare 0.2.1  https://gitlab.com/timvisee/version-compare
 
 Copyright (c) 2017 Tim Visée
@@ -4056,6 +4157,39 @@ DEALINGS IN THE SOFTWARE.
 MIT License
 
 Used by:
+    mach2 0.6.0  https://github.com/JohnTitor/mach2
+
+Copyright (c) 2019 Nick Fitzgerald, 2021 Yuki Okushi
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+MIT License
+
+Used by:
     downcast-rs 1.2.1  https://github.com/marcianx/downcast-rs
 
 Copyright (c) 2020 Ashish Myles and contributors
@@ -4306,11 +4440,13 @@ Used by:
     anstream 1.0.0  https://github.com/rust-cli/anstyle.git
     anstyle-parse 1.0.0  https://github.com/rust-cli/anstyle.git
     anstyle-query 1.1.5  https://github.com/rust-cli/anstyle.git
+    anstyle-wincon 3.0.11  https://github.com/rust-cli/anstyle.git
     anstyle 1.0.14  https://github.com/rust-cli/anstyle.git
     colorchoice 1.0.5  https://github.com/rust-cli/anstyle.git
     env_filter 2.0.0  https://github.com/rust-cli/env_logger
     env_logger 0.11.11  https://github.com/rust-cli/env_logger
     is_terminal_polyfill 1.70.2  https://github.com/polyfill-rs/is_terminal_polyfill
+    once_cell_polyfill 1.70.2  https://github.com/polyfill-rs/once_cell_polyfill
     serde_spanned 1.1.1  https://github.com/toml-rs/toml
     toml 1.1.6+spec-1.1.0  https://github.com/toml-rs/toml
     toml_datetime 1.1.1+spec-1.1.0  https://github.com/toml-rs/toml
@@ -4742,13 +4878,43 @@ SOFTWARE.
 MIT License
 
 Used by:
+    block2 0.6.2  https://github.com/madsmtm/objc2
+    block 0.1.6  http://github.com/SSheldon/rust-block
     dasp_sample 0.11.0  https://github.com/rustaudio/sample.git
+    dispatch2 0.3.1  https://github.com/madsmtm/objc2
+    dispatch 0.2.0  http://github.com/SSheldon/rust-dispatch
     lofty 0.25.4  https://github.com/Serial-ATA/lofty-rs
     lofty_attr 0.13.0  https://github.com/Serial-ATA/lofty-rs
     lua-src 551.0.2  https://github.com/mlua-rs/lua-src-rs
+    malloc_buf 0.0.6  https://github.com/SSheldon/malloc_buf
     mlua-sys 0.13.0  https://github.com/mlua-rs/mlua
+    objc2-audio-toolbox 0.3.2  https://github.com/madsmtm/objc2
+    objc2-core-audio-types 0.3.2  https://github.com/madsmtm/objc2
+    objc2-core-audio 0.3.2  https://github.com/madsmtm/objc2
+    objc2-core-foundation 0.3.2  https://github.com/madsmtm/objc2
+    objc2-encode 4.1.0  https://github.com/madsmtm/objc2
+    objc2-foundation 0.3.2  https://github.com/madsmtm/objc2
+    objc2 0.6.5  https://github.com/madsmtm/objc2
     ogg_pager 0.7.2  https://github.com/Serial-ATA/lofty-rs
     realfft 3.5.0  https://github.com/HEnquist/realfft
+    windows-collections 0.3.2  https://github.com/microsoft/windows-rs
+    windows-core 0.62.2  https://github.com/microsoft/windows-rs
+    windows-future 0.3.2  https://github.com/microsoft/windows-rs
+    windows-implement 0.60.2  https://github.com/microsoft/windows-rs
+    windows-interface 0.59.3  https://github.com/microsoft/windows-rs
+    windows-link 0.2.1  https://github.com/microsoft/windows-rs
+    windows-numerics 0.3.1  https://github.com/microsoft/windows-rs
+    windows-result 0.4.1  https://github.com/microsoft/windows-rs
+    windows-strings 0.5.1  https://github.com/microsoft/windows-rs
+    windows-sys 0.60.2  https://github.com/microsoft/windows-rs
+    windows-sys 0.61.2  https://github.com/microsoft/windows-rs
+    windows-targets 0.42.2  https://github.com/microsoft/windows-rs
+    windows-targets 0.53.5  https://github.com/microsoft/windows-rs
+    windows-threading 0.2.1  https://github.com/microsoft/windows-rs
+    windows 0.44.0  https://github.com/microsoft/windows-rs
+    windows 0.62.2  https://github.com/microsoft/windows-rs
+    windows_x86_64_gnu 0.42.2  https://github.com/microsoft/windows-rs
+    windows_x86_64_gnu 0.53.1  https://github.com/microsoft/windows-rs
 
 MIT License
 
@@ -4785,6 +4951,35 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+MIT License
+
+Used by:
+    objc 0.2.7  http://github.com/SSheldon/rust-objc
+
+MIT License
+
+Copyright (c) Steven Sheldon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 
 ================================================================================
@@ -5102,6 +5297,35 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 MIT License
 
 Used by:
+    base64 0.22.1  https://github.com/marshallpierce/rust-base64
+
+The MIT License (MIT)
+
+Copyright (c) 2015 Alice Maz
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+================================================================================
+MIT License
+
+Used by:
     aho-corasick 1.1.5  https://github.com/BurntSushi/aho-corasick
     byteorder 1.5.0  https://github.com/BurntSushi/byteorder
     jiff-core 0.1.1  https://github.com/BurntSushi/jiff
@@ -5165,6 +5389,36 @@ THE SOFTWARE.
 MIT License
 
 Used by:
+    fsevent-sys 4.1.0  https://github.com/octplane/fsevent-rust/tree/master/fsevent-sys
+
+The MIT License (MIT)
+
+Copyright (c) 2015 Pierre Baillet
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+================================================================================
+MIT License
+
+Used by:
     data-encoding 2.11.1  https://github.com/ia0/data-encoding
 
 The MIT License (MIT)
@@ -5196,6 +5450,7 @@ MIT License
 
 Used by:
     same-file 1.0.6  https://github.com/BurntSushi/same-file
+    winapi-util 0.1.11  https://github.com/BurntSushi/winapi-util
 
 The MIT License (MIT)
 

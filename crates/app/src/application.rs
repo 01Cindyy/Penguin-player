@@ -15,15 +15,19 @@ use crate::ui::{icons, preferences};
 /// Accelerators for actions that never conflict with typing. Playback shortcuts
 /// (Space, Ctrl+arrows, …) are handled in [`crate::ui::shortcuts`] instead.
 const ACCELERATORS: &[(&str, &[&str])] = &[
-    ("app.quit", &["<Control>q"]),
-    ("app.preferences", &["<Control>comma"]),
-    ("app.search", &["<Control>f"]),
-    ("app.toggle-queue", &["<Control>l"]),
+    ("app.quit", &["<Primary>q"]),
+    ("app.preferences", &["<Primary>comma"]),
+    ("app.search", &["<Primary>f"]),
+    ("app.toggle-queue", &["<Primary>l"]),
 ];
 
 /// Runs the application until it quits.
 pub fn run() -> glib::ExitCode {
-    let app = adw::Application::builder().application_id(APP_ID).build();
+    // HANDLES_OPEN: files from "Open With" or the command line arrive in `open`.
+    let app = adw::Application::builder()
+        .application_id(APP_ID)
+        .flags(gio::ApplicationFlags::HANDLES_OPEN)
+        .build();
     let context: Rc<RefCell<Option<Rc<AppContext>>>> = Rc::default();
 
     app.connect_startup(|_| {
@@ -39,6 +43,16 @@ pub fn run() -> glib::ExitCode {
         #[strong]
         context,
         move |app| activate(app, &context)
+    ));
+    app.connect_open(glib::clone!(
+        #[strong]
+        context,
+        move |app, files, _| {
+            activate(app, &context);
+            if let Some(ctx) = context.borrow().as_ref() {
+                crate::services::opened_files::open(ctx, files);
+            }
+        }
     ));
     app.connect_shutdown(move |_| {
         if let Some(ctx) = context.borrow_mut().take() {

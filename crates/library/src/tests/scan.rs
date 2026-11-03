@@ -792,3 +792,43 @@ fn tracks_behind_a_dangling_symlink_are_kept() {
     fs::remove_file(lib.root.join("NAS")).unwrap();
     assert_eq!(lib.scan().removed, 1);
 }
+
+#[test]
+fn songs_outside_the_library_are_read_without_adding_them() {
+    let lib = TestLibrary::new();
+    let elsewhere = lib.root.parent().unwrap().join("downloads");
+    fs::create_dir(&elsewhere).unwrap();
+    let song = elsewhere.join("01 Tidewater.wav");
+    write_wav(
+        &song,
+        &TestTags {
+            pictures: vec![(PictureType::CoverFront, png(7))],
+            ..album_tags("Tidewater", "1/12")
+        },
+    );
+    let notes = elsewhere.join("notes.txt");
+    fs::write(&notes, "not music").unwrap();
+    let covers = elsewhere.join("covers");
+
+    let songs = crate::read_songs(
+        &[
+            song.clone(),
+            notes,
+            elsewhere.join("missing.wav"),
+            elsewhere.clone(),
+        ],
+        &covers,
+    )
+    .unwrap();
+    let [Some(track), None, None, None] = songs.as_slice() else {
+        panic!("unexpected {songs:?}");
+    };
+    assert_eq!(track.title, "Tidewater");
+    assert_eq!(track.album, "Coastal Drift");
+    assert_eq!(track.path, song);
+    let cover = track.cover.as_ref().expect("the embedded cover");
+    assert_eq!(fs::read(covers.join(&cover.0)).unwrap(), png(7));
+    // The library and its covers are untouched.
+    assert!(lib.library.tracks().unwrap().is_empty());
+    assert!(lib.cover_files().is_empty());
+}

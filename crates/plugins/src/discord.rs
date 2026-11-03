@@ -1,7 +1,8 @@
 //! Discord Rich Presence for plugins the user allowed to use it (`mp.discord`): what is
 //! playing, shown on the user's Discord profile.
 //!
-//! The Discord app on the same computer listens on a local socket (`discord-ipc-0`).
+//! The Discord app on the same computer listens on a local socket (`discord-ipc-0`), or
+//! on Windows a named pipe of that name.
 //! Messages are frames of an opcode, a length and JSON: a handshake naming the app's
 //! Discord application, then `SET_ACTIVITY` commands. Nothing goes over the internet
 //! from here, and nothing happens while Discord isn't running.
@@ -349,11 +350,79 @@ fn connect(path: &std::path::Path) -> std::io::Result<Stream> {
     Ok(stream)
 }
 
-// Discord on Windows listens on the named pipe `\\.\pipe\discord-ipc-0` instead.
-#[cfg(not(unix))]
+/// Discord's named pipe. Pipes opened as files have no read timeout, so reads wait for
+/// Discord's answer by peeking at the pipe.
+#[cfg(windows)]
+struct Stream(std::fs::File);
+
+#[cfg(windows)]
+fn connect(path: &std::path::Path) -> std::io::Result<Stream> {
+    std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .map(Stream)
+}
+
+#[cfg(windows)]
+impl std::io::Read for Stream {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        use std::os::windows::io::AsRawHandle;
+
+        unsafe extern "system" {
+            fn PeekNamedPipe(
+                pipe: *mut std::ffi::c_void,
+                buffer: *mut std::ffi::c_void,
+                buffer_size: u32,
+                bytes_read: *mut u32,
+                bytes_available: *mut u32,
+                bytes_left_in_message: *mut u32,
+            ) -> i32;
+        }
+
+        let deadline = Instant::now() + REPLY_TIMEOUT;
+        loop {
+            let mut available = 0;
+            // SAFETY: the handle is the open pipe, and only `available` is written to.
+            let peeked = unsafe {
+                PeekNamedPipe(
+                    self.0.as_raw_handle(),
+                    std::ptr::null_mut(),
+                    0,
+                    std::ptr::null_mut(),
+                    &mut available,
+                    std::ptr::null_mut(),
+                )
+            };
+            if peeked == 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            if available > 0 {
+                return self.0.read(buffer);
+            }
+            if Instant::now() >= deadline {
+                return Err(std::io::ErrorKind::TimedOut.into());
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+}
+
+#[cfg(windows)]
+impl std::io::Write for Stream {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        self.0.write(buffer)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.flush()
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
 type Stream = std::fs::File;
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 fn connect(_path: &std::path::Path) -> std::io::Result<Stream> {
     Err(std::io::ErrorKind::Unsupported.into())
 }
@@ -460,7 +529,16 @@ fn error_message(reply: &Value) -> String {
         .to_owned()
 }
 
+/// Where the Discord app listens on Windows.
+#[cfg(windows)]
+fn socket_paths() -> Vec<std::path::PathBuf> {
+    (0..10)
+        .map(|number| format!(r"\\.\pipe\discord-ipc-{number}").into())
+        .collect()
+}
+
 /// Where the Discord app (or Vesktop, or Discord from Flatpak or Snap) may listen.
+#[cfg(not(windows))]
 fn socket_paths() -> Vec<std::path::PathBuf> {
     const SUBFOLDERS: [&str; 6] = [
         "",

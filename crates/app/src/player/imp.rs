@@ -28,7 +28,8 @@ pub struct Player {
     /// Length of the current track, in milliseconds.
     #[property(get)]
     pub(super) duration: Cell<u64>,
-    /// Linear volume in `0.0..=1.0`, independent of `muted`.
+    /// The volume slider's level in `0.0..=1.0`, independent of `muted`. The output
+    /// plays it at [`super::output_gain`].
     #[property(get, set = Self::set_volume_property, explicit_notify, minimum = 0.0, maximum = 1.0, default = 1.0)]
     pub(super) volume: Cell<f64>,
     #[property(get, set = Self::set_muted_property, explicit_notify)]

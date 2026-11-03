@@ -15,8 +15,8 @@ use adw::subclass::prelude::*;
 use gtk::{glib, graphene, gsk};
 use mp_audio::{Scope, ScopeWatch, Spectrum};
 
-const BAR_WIDTH: f32 = 4.0;
-const BAR_GAP: f32 = 3.0;
+pub(super) const BAR_WIDTH: f32 = 4.0;
+const BAR_GAP: f32 = 2.0;
 const MAX_BARS: usize = 96;
 /// Longest step the bars take at once, so they don't jump after the window was hidden.
 const MAX_STEP_SECONDS: f32 = 0.1;
@@ -24,7 +24,8 @@ const MAX_STEP_SECONDS: f32 = 0.1;
 mod imp {
     use super::*;
 
-    #[derive(Default)]
+    #[derive(Default, glib::Properties)]
+    #[properties(wrapper_type = super::Visualizer)]
     pub struct Visualizer {
         pub(super) scope: RefCell<Option<Scope>>,
         /// Held while audio is wanted from the scope.
@@ -37,6 +38,16 @@ mod imp {
         /// Frame time of the last update, in microseconds.
         pub(super) last_frame: Cell<Option<i64>>,
         pub(super) bar_height: Cell<i32>,
+        /// How rounded the bars are, in pixels.
+        #[property(get, set = Self::set_bar_radius)]
+        pub(super) bar_radius: Cell<f32>,
+    }
+
+    impl Visualizer {
+        fn set_bar_radius(&self, radius: f32) {
+            self.bar_radius.set(radius);
+            self.obj().queue_draw();
+        }
     }
 
     #[glib::object_subclass]
@@ -51,6 +62,7 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for Visualizer {
         fn constructed(&self) {
             self.parent_constructed();
@@ -99,10 +111,7 @@ mod imp {
                     continue;
                 }
                 let x = start + index as f32 * (BAR_WIDTH + BAR_GAP);
-                let rect = graphene::Rect::new(x, height - bar, BAR_WIDTH, bar);
-                let radius = (BAR_WIDTH / 2.0).min(bar / 2.0);
-                let corner = graphene::Size::new(radius, radius);
-                path.add_rounded_rect(&gsk::RoundedRect::new(rect, corner, corner, corner, corner));
+                add_bar(&path, x, height - bar, bar, self.bar_radius.get());
                 empty = false;
             }
             if !empty {
@@ -192,7 +201,7 @@ impl Visualizer {
         let mut spectrum = imp.spectrum.borrow_mut();
         let levels = spectrum.update(
             audio.map(|rate| (samples.as_slice(), rate)),
-            bar_count(self.width()),
+            bar_count(self.width(), BAR_GAP),
             elapsed,
         );
         let mut shown = imp.levels.borrow_mut();
@@ -210,9 +219,17 @@ impl Visualizer {
     }
 }
 
-/// How many bars fit across `width` pixels.
-fn bar_count(width: i32) -> usize {
-    let fitting = (width as f32 + BAR_GAP) / (BAR_WIDTH + BAR_GAP);
+/// Adds a bar `bar` pixels tall, starting `top` pixels down.
+pub(super) fn add_bar(path: &gsk::PathBuilder, x: f32, top: f32, bar: f32, radius: f32) {
+    let rect = graphene::Rect::new(x, top, BAR_WIDTH, bar);
+    let radius = radius.min(BAR_WIDTH / 2.0).min(bar / 2.0);
+    let corner = graphene::Size::new(radius, radius);
+    path.add_rounded_rect(&gsk::RoundedRect::new(rect, corner, corner, corner, corner));
+}
+
+/// How many bars `gap` pixels apart fit across `width` pixels.
+pub(super) fn bar_count(width: i32, gap: f32) -> usize {
+    let fitting = (width as f32 + gap) / (BAR_WIDTH + gap);
     (fitting.max(0.0) as usize).min(MAX_BARS)
 }
 
@@ -222,10 +239,11 @@ mod tests {
 
     #[test]
     fn bars_fill_the_width_up_to_a_limit() {
-        assert_eq!(bar_count(0), 0);
-        assert_eq!(bar_count(4), 1);
-        assert_eq!(bar_count(10), 1);
-        assert_eq!(bar_count(11), 2);
-        assert_eq!(bar_count(5_000), MAX_BARS);
+        assert_eq!(bar_count(0, 2.0), 0);
+        assert_eq!(bar_count(4, 2.0), 1);
+        assert_eq!(bar_count(9, 2.0), 1);
+        assert_eq!(bar_count(10, 2.0), 2);
+        assert_eq!(bar_count(10, 3.0), 1);
+        assert_eq!(bar_count(5_000, 2.0), MAX_BARS);
     }
 }

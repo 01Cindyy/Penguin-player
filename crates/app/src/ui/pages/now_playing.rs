@@ -17,21 +17,24 @@ use mp_core::{Lyrics, Track};
 use mp_plugins::{LyricsSearch, OwnLyrics};
 
 use crate::context::AppContext;
+use crate::display::DisplayOptions;
 use crate::model::TrackObject;
 use crate::player::{Player, PlayerState};
 use crate::ui::navigation::Route;
 use crate::ui::widgets::{
-    CoverBackdrop, CoverImage, FormatBadge, LyricsView, SeekBar, TransportControls, Visualizer,
-    VolumeControls,
+    CoverBackdrop, CoverImage, FormatBadge, LyricsView, MatchWidth, SeekBar, TransportControls,
+    Visualizer, VolumeControls,
 };
 use crate::ui::window::MainWindow;
 use crate::ui::{
-    disconnect_on_destroy, ellipsized_label, icon_toggle, icons, keep_alive, link_button,
-    max_width_breakpoint, set_css_class,
+    disconnect_on_destroy, ellipsized_label, icons, keep_alive, labelled_toggle, link_button,
+    max_width_breakpoint, set_css_class, set_link_active,
 };
 
 /// The largest the art is shown; it shrinks to fit smaller windows.
 const COVER_SIZE: i32 = 480;
+/// The column's margins (`.mp-now-playing-column`) on both sides together.
+const COLUMN_MARGINS: i32 = 64;
 const VISUALIZER_HEIGHT: i32 = 56;
 /// Pages narrower than this (in sp) show lyrics in place of the art, not beside it.
 const LYRICS_BESIDE_MIN_WIDTH: f64 = 860.0;
@@ -89,6 +92,16 @@ struct NowPlayingPage {
     lyrics_search: Cell<LyricsSearch>,
 }
 
+/// A handler for a change to the display options that decide what shows above the seek bar.
+fn on_display(page: &Rc<NowPlayingPage>) -> impl Fn(&DisplayOptions) + 'static {
+    let page = Rc::downgrade(page);
+    move |_| {
+        if let Some(page) = page.upgrade() {
+            page.update_visualizer();
+        }
+    }
+}
+
 impl NowPlayingPage {
     fn new(ctx: &Rc<AppContext>) -> Self {
         let cover = CoverImage::with_pixel_size(&ctx.covers, COVER_SIZE);
@@ -96,11 +109,11 @@ impl NowPlayingPage {
         cover.set_can_shrink(true);
         let visualizer = Visualizer::new(ctx.player.scope());
         visualizer.set_bar_height(VISUALIZER_HEIGHT);
-        let lyrics_toggle = icon_toggle(
-            icons::LYRICS,
-            "Lyrics",
-            &["flat", "circular", "mp-toggle-button"],
-        );
+        ctx.display
+            .bind_property("bar-radius", &visualizer, "bar-radius")
+            .sync_create()
+            .build();
+        let lyrics_toggle = labelled_toggle(icons::LYRICS, "Lyrics");
         lyrics_toggle.set_active(ctx.settings().window.now_playing_lyrics);
         Self {
             ctx: ctx.clone(),
@@ -195,16 +208,10 @@ impl NowPlayingPage {
 
         let seek_bar = SeekBar::new(ctx);
         seek_bar.set_above(&self.visualizer);
-        ctx.display
-            .bind_property("visualizer", &self.visualizer, "visible")
-            .sync_create()
-            .build();
+        seek_bar.set_waveform_height(VISUALIZER_HEIGHT);
+        seek_bar.pin_times_to_ends();
 
-        let queue = icon_toggle(
-            icons::QUEUE,
-            "Queue",
-            &["flat", "circular", "mp-toggle-button"],
-        );
+        let queue = labelled_toggle(icons::QUEUE, "Queue");
         if let Some(window) = ctx.window().and_downcast::<MainWindow>() {
             window.bind_queue_toggle(&queue);
         }
@@ -218,14 +225,29 @@ impl NowPlayingPage {
                 page.update_layout();
             }
         });
+        let volume = VolumeControls::new(ctx);
+        volume.fill_width();
         let extras = gtk::Box::builder()
             .spacing(4)
-            .halign(gtk::Align::Center)
             .css_classes(["mp-player-extras"])
             .build();
-        extras.append(&VolumeControls::new(ctx));
+        extras.append(&volume);
         extras.append(&self.lyrics_toggle);
         extras.append(&queue);
+
+        let transport = TransportControls::new(ctx);
+        transport.spread();
+        let controls = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        controls.append(&seek_bar);
+        controls.append(&transport);
+        controls.append(
+            &gtk::Separator::builder()
+                .css_classes(["mp-now-divider"])
+                .build(),
+        );
+        controls.append(&extras);
 
         let column = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -236,11 +258,10 @@ impl NowPlayingPage {
         column.append(&self.title);
         column.append(&self.byline);
         column.append(&quality);
-        column.append(&seek_bar);
-        column.append(&TransportControls::new(ctx));
-        column.append(&extras);
+        column.append(&MatchWidth::new(&controls, &self.art));
+        // Wide enough for the art at its largest, so the controls can match it.
         let clamp = adw::Clamp::builder()
-            .maximum_size(560)
+            .maximum_size(COVER_SIZE + COLUMN_MARGINS)
             .tightening_threshold(400)
             .child(&column)
             .build();
@@ -318,6 +339,15 @@ impl NowPlayingPage {
             }
         });
         disconnect_on_destroy(root, &self.ctx.display, handler);
+        for handler in [
+            self.ctx.display.connect_visualizer_notify(on_display(self)),
+            self.ctx
+                .display
+                .connect_waveform_seek_bar_notify(on_display(self)),
+        ] {
+            disconnect_on_destroy(root, &self.ctx.display, handler);
+        }
+        self.update_visualizer();
         // Plugins switched on or off, or set differently, may start or stop looking up
         // the song's lyrics.
         let page = Rc::downgrade(self);
@@ -359,6 +389,16 @@ impl NowPlayingPage {
                 self.title.set_label(&track.title());
                 self.artist.set_label(&track.artist());
                 self.album.set_label(&track.album());
+                // A song opened from outside the library may have neither.
+                let store = &self.ctx.store;
+                for (label, in_library) in [
+                    (&self.artist, store.artist(&track.artist_key()).is_some()),
+                    (&self.album, store.album(&track.album_key()).is_some()),
+                ] {
+                    if let Some(link) = label.parent().and_downcast::<gtk::Button>() {
+                        set_link_active(&link, in_library);
+                    }
+                }
             }
             None => self.title.set_label("Not Playing"),
         }
@@ -388,6 +428,13 @@ impl NowPlayingPage {
     fn update_state(&self) {
         let playing = self.ctx.player.state() == PlayerState::Playing;
         self.visualizer.set_playing(playing);
+    }
+
+    /// The waveform takes the visualiser's place.
+    fn update_visualizer(&self) {
+        let display = &self.ctx.display;
+        self.visualizer
+            .set_visible(display.visualizer() && !display.waveform_seek_bar());
     }
 
     /// Lyrics show while they are on and a song is playing: beside the art on wide

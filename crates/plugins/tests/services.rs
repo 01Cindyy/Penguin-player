@@ -335,7 +335,7 @@ fn bundled_host(
 }
 
 #[test]
-fn online_lyrics_picks_the_best_match_and_sends_only_title_and_artist() {
+fn online_lyrics_picks_the_best_match_by_title_and_artist() {
     let dirs = TestDirs::new();
     let web = FakeWeb::new(|_| ok(LRCLIB_ANSWER));
     let discord = Arc::new(FakeDiscord::default());
@@ -381,6 +381,7 @@ fn online_lyrics_tries_a_simpler_title_and_remembers_songs_without_lyrics() {
         [
             "https://lrclib.net/api/search?artist_name=Artist&track_name=Song%20%282011%20Remaster%29",
             "https://lrclib.net/api/search?artist_name=Artist&track_name=Song",
+            "https://lrclib.net/api/search?album_name=Album&track_name=Song",
         ]
     );
     host.find_lyrics(2, remaster, OwnLyrics::Missing);
@@ -391,7 +392,7 @@ fn online_lyrics_tries_a_simpler_title_and_remembers_songs_without_lyrics() {
             lyrics: None
         }
     );
-    assert_eq!(web.urls().len(), 2, "asked again for a song without lyrics");
+    assert_eq!(web.urls().len(), 3, "asked again for a song without lyrics");
 }
 
 #[test]
@@ -433,20 +434,20 @@ fn online_lyrics_replaces_songs_own_lyrics_only_with_better_ones() {
         None,
         "only untimed online"
     );
-    assert_eq!(web.urls().len(), 1);
+    assert_eq!(web.urls().len(), 2, "by artist, then by album");
     assert_eq!(find(2, &track(), OwnLyrics::Untimed), None);
     assert_eq!(
         web.urls().len(),
-        1,
+        2,
         "asked again for timed lyrics LRCLIB lacks"
     );
     assert_eq!(
         find(3, &track(), OwnLyrics::Missing).as_deref(),
         Some("plain only")
     );
-    assert_eq!(web.urls().len(), 2);
+    assert_eq!(web.urls().len(), 3);
     assert_eq!(find(4, &other, OwnLyrics::Timed), None);
-    assert_eq!(web.urls().len(), 2, "asked about a song with timed lyrics");
+    assert_eq!(web.urls().len(), 3, "asked about a song with timed lyrics");
 
     host.set_setting("online-lyrics", "prefer", Some(json!("always")));
     assert_eq!(
@@ -457,7 +458,55 @@ fn online_lyrics_replaces_songs_own_lyrics_only_with_better_ones() {
         find(6, &track(), OwnLyrics::Untimed).as_deref(),
         Some("plain only")
     );
-    assert_eq!(web.urls().len(), 4);
+    assert_eq!(web.urls().len(), 5);
+}
+
+/// A song whose artist LRCLIB names differently, or that has no artist, is found by
+/// its title and album, as long as both match.
+#[test]
+fn online_lyrics_finds_songs_by_title_and_album() {
+    let dirs = TestDirs::new();
+    let web = FakeWeb::new(|request: &HttpRequest| {
+        if request.url.contains("artist_name=") {
+            return ok("[]");
+        }
+        ok(r#"[
+            { "trackName": "Song", "artistName": "Someone Else", "albumName": "Other Album",
+              "duration": 180.0, "instrumental": false,
+              "plainLyrics": "wrong album", "syncedLyrics": "[00:01.00] wrong album" },
+            { "trackName": "Song, Part Two", "artistName": "The Artist", "albumName": "Album",
+              "duration": 180.0, "instrumental": false,
+              "plainLyrics": "wrong title", "syncedLyrics": "[00:01.00] wrong title" },
+            { "trackName": "Song ", "artistName": "The Artist", "albumName": "album (Remastered)",
+              "duration": 179.0, "instrumental": false,
+              "plainLyrics": "right", "syncedLyrics": "[00:01.00] right" }
+        ]"#)
+    });
+    let discord = Arc::new(FakeDiscord::default());
+    let (host, events) = bundled_host(&web, &discord, &dirs);
+    let mut deluxe = track();
+    deluxe.album = "Album (Deluxe Edition)".into();
+    let mut no_artist = track();
+    no_artist.artist = String::new();
+
+    for (request, track) in [(1, deluxe), (2, no_artist)] {
+        host.find_lyrics(request, track, OwnLyrics::Missing);
+        assert_eq!(
+            events.next_except_lyrics_search(),
+            HostEvent::Lyrics {
+                request,
+                lyrics: Some("[00:01.00] right".into())
+            }
+        );
+    }
+    assert_eq!(
+        web.urls(),
+        [
+            "https://lrclib.net/api/search?artist_name=Artist&track_name=Song",
+            "https://lrclib.net/api/search?album_name=Album&track_name=Song",
+            "https://lrclib.net/api/search?album_name=Album&track_name=Song",
+        ]
+    );
 }
 
 #[test]

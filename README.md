@@ -23,10 +23,14 @@ A native music player written in Rust, for playing your music files offline. It'
 - **Browse and search**: songs, albums, artists and formats, with search as you type.
 - **Playback**: gapless, in full quality, with shuffle, repeat and a queue you can
   reorder by dragging.
+- **Open With**: play songs straight from your file manager, whether or not they're in
+  your library.
 - **Now Playing**: the song fills the window over a blur of its art.
 - **Lyrics**: timed lyrics from your files' tags or `.lrc` files follow the song.
-- **Playlists** that keep track of songs whose files went missing.
-- **Visualiser**: bars that move with the music, in your theme's colour.
+- **Playlists** that keep track of songs whose files went missing, shown with their songs'
+  covers or an image of your own.
+- **Visualiser**: bars that move with the music, in your theme's colour. Or use the song's
+  waveform as the seek bar.
 - **Themes**: fourteen built in, plus your own and a Pywal theme that follows your
   wallpaper (see [pywal16](https://github.com/eylles/pywal16) for details); with extra
   options for corners, the visualiser and a translucent window.
@@ -150,8 +154,8 @@ delete them yourself if you want them gone.
 
 Penguin Player doesn't go online. The only exceptions are plugins you switch on
 yourself, and only to the sites they ask for and you allow. With Online Lyrics, the
-title and artist of a song are sent to LRCLIB when you open its lyrics; with Discord
-Status, what you're playing goes to the Discord app on your computer.
+title, artist and album of a song are sent to LRCLIB when you open its lyrics; with
+Discord Status, what you're playing goes to the Discord app on your computer.
 
 ## Building from source
 

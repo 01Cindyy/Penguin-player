@@ -20,8 +20,6 @@ pub const VOLUME_HIGH: &str = "mp-volume-high-symbolic";
 pub const VOLUME_MEDIUM: &str = "mp-volume-medium-symbolic";
 pub const VOLUME_LOW: &str = "mp-volume-low-symbolic";
 pub const VOLUME_MUTED: &str = "mp-volume-muted-symbolic";
-/// Marks the track that is playing.
-pub const NOW_PLAYING: &str = VOLUME_HIGH;
 pub const QUEUE: &str = "mp-queue-symbolic";
 pub const LYRICS: &str = "mp-lyrics-symbolic";
 

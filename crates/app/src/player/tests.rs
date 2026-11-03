@@ -330,7 +330,7 @@ fn mute_and_volume_interact() {
     assert_eq!(h.take_calls(), vec![Call::Volume(0.0)]);
     h.player.set_volume(0.5);
     assert!(!h.player.muted());
-    assert_eq!(h.take_calls(), vec![Call::Volume(0.5)]);
+    assert_eq!(h.take_calls(), vec![Call::Volume(0.125)], "the level cubed");
     h.player.execute(PlayerCommand::SetVolume {
         volume: 3.0,
         unmute: true,

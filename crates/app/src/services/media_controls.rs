@@ -1,5 +1,6 @@
-//! OS media controls: MPRIS over D-Bus on Linux and the BSDs, Now Playing on macOS,
-//! nothing elsewhere yet. Everything platform specific in the app lives here.
+//! OS media controls: MPRIS over D-Bus on Linux and the BSDs, and the media overlay
+//! (System Media Transport Controls) on Windows. Everything platform specific in the app
+//! lives here.
 //!
 //! Media keys and desktop widgets become player commands, and the player's events
 //! update what the desktop shows. A missing D-Bus session only disables the feature.
@@ -13,13 +14,14 @@ pub fn start(ctx: &Rc<AppContext>) {
     platform::start(ctx);
 }
 
-#[cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))]
+#[cfg(any(windows, all(unix, not(any(target_os = "android", target_os = "ios")))))]
 mod platform {
     use std::cell::RefCell;
+    use std::ffi::c_void;
     use std::rc::Rc;
     use std::time::Duration;
 
-    use gtk::{gio, glib};
+    use gtk::glib;
     use mp_core::{APP_ID, APP_NAME, PlaybackState, PlayerCommand, PlayerEvent, Track};
     use souvlaki::{
         MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition,
@@ -40,7 +42,7 @@ mod platform {
 
         let weak = Rc::downgrade(ctx);
         let shared = controls.clone();
-        connect(events, move |result| match result {
+        connect(ctx, events, move |result| match result {
             Ok(attached) => {
                 shared.replace(Some(attached));
                 if let Some(ctx) = weak.upgrade() {
@@ -78,11 +80,15 @@ mod platform {
         });
     }
 
-    fn create(events: async_channel::Sender<MediaControlEvent>) -> Result<MediaControls, String> {
+    /// `hwnd` is the main window's handle, which Windows needs.
+    fn create(
+        events: async_channel::Sender<MediaControlEvent>,
+        hwnd: Option<*mut c_void>,
+    ) -> Result<MediaControls, String> {
         let config = PlatformConfig {
             display_name: APP_NAME,
             dbus_name: APP_ID,
-            hwnd: None,
+            hwnd,
         };
         let mut controls = MediaControls::new(config).map_err(|err| err.to_string())?;
         controls
@@ -95,8 +101,9 @@ mod platform {
 
     /// Connecting to the session bus can stall, so on D-Bus platforms it happens on a
     /// short-lived thread and the attached controls are handed back to the main thread.
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(windows))]
     fn connect(
+        _ctx: &AppContext,
         events: async_channel::Sender<MediaControlEvent>,
         done: impl FnOnce(Result<MediaControls, String>) + 'static,
     ) {
@@ -104,7 +111,7 @@ mod platform {
         let spawned = std::thread::Builder::new()
             .name("media-controls".into())
             .spawn(move || {
-                let _ = sender.send_blocking(create(events));
+                let _ = sender.send_blocking(create(events, None));
             });
         if let Err(err) = spawned {
             done(Err(err.to_string()));
@@ -117,13 +124,34 @@ mod platform {
         });
     }
 
-    /// macOS requires Now Playing to be set up on the main thread; it doesn't block.
-    #[cfg(target_os = "macos")]
+    /// Windows ties the media overlay to the main window, which is shown by now.
+    #[cfg(windows)]
     fn connect(
+        ctx: &AppContext,
         events: async_channel::Sender<MediaControlEvent>,
         done: impl FnOnce(Result<MediaControls, String>) + 'static,
     ) {
-        done(create(events));
+        match window_handle(ctx) {
+            Some(hwnd) => done(create(events, Some(hwnd))),
+            None => done(Err("the main window has no Windows handle".into())),
+        }
+    }
+
+    /// The main window's HWND, from GTK's Windows backend.
+    #[cfg(windows)]
+    fn window_handle(ctx: &AppContext) -> Option<*mut c_void> {
+        use gtk::glib::translate::ToGlibPtr;
+        use gtk::prelude::NativeExt;
+
+        unsafe extern "C" {
+            fn gdk_win32_surface_get_handle(surface: *mut gtk::gdk::ffi::GdkSurface)
+            -> *mut c_void;
+        }
+        let surface = ctx.window()?.surface()?;
+        // SAFETY: `surface` is alive for the call, and GTK gives null for a surface
+        // that isn't a Windows one.
+        let hwnd = unsafe { gdk_win32_surface_get_handle(surface.to_glib_none().0) };
+        (!hwnd.is_null()).then_some(hwnd)
     }
 
     pub(super) fn translate(event: MediaControlEvent) -> Option<PlayerCommand> {
@@ -226,13 +254,13 @@ mod platform {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(windows))]
     fn set_volume(media: &mut MediaControls, volume: f64) -> Result<(), souvlaki::Error> {
         media.set_volume(volume)
     }
 
-    /// Now Playing has no volume.
-    #[cfg(target_os = "macos")]
+    /// The Windows media overlay has no volume.
+    #[cfg(windows)]
     fn set_volume(_media: &mut MediaControls, _volume: f64) -> Result<(), souvlaki::Error> {
         Ok(())
     }
@@ -247,24 +275,38 @@ mod platform {
     }
 
     /// The full-size cover as a `file://` URL, which is what desktop widgets expect.
+    #[cfg(not(windows))]
     fn cover_url(ctx: &AppContext, track: &Track) -> Option<String> {
+        use gtk::gio;
+
         let path = ctx.covers.source_path(track.cover.as_ref()?);
         path.exists()
             .then(|| gio::prelude::FileExt::uri(&gio::File::for_path(&path)).to_string())
     }
+
+    /// The full-size cover. On Windows souvlaki wants the plain path after `file://`,
+    /// and a cover it can't open stops the media controls.
+    #[cfg(windows)]
+    fn cover_url(ctx: &AppContext, track: &Track) -> Option<String> {
+        let path = ctx.covers.source_path(track.cover.as_ref()?);
+        path.exists().then(|| format!("file://{}", path.display()))
+    }
 }
 
-#[cfg(not(all(unix, not(any(target_os = "android", target_os = "ios")))))]
+#[cfg(not(any(windows, all(unix, not(any(target_os = "android", target_os = "ios"))))))]
 mod platform {
     use std::rc::Rc;
 
     use crate::context::AppContext;
 
-    /// Windows media controls need a native window handle; not wired up yet.
+    /// No media controls on this platform.
     pub fn start(_ctx: &Rc<AppContext>) {}
 }
 
-#[cfg(all(test, unix, not(any(target_os = "android", target_os = "ios"))))]
+#[cfg(all(
+    test,
+    any(windows, all(unix, not(any(target_os = "android", target_os = "ios"))))
+))]
 mod tests {
     use std::time::Duration;
 

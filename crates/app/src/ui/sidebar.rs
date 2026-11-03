@@ -8,16 +8,23 @@ use std::rc::{Rc, Weak};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gdk, gio, glib, graphene};
-use mp_core::PlaylistId;
+use mp_core::{PlaylistId, TrackId};
 
 use crate::context::AppContext;
-use crate::model::PlaylistObject;
+use crate::model::{LibraryStore, PlaylistObject, TrackObject};
 use crate::ui::icons;
 use crate::ui::navigation::Route;
-use crate::ui::widgets::collections::playlist_actions;
+use crate::ui::shortcuts::primary;
+use crate::ui::widgets::collections::{CoverMosaic, playlist_actions, playlist_covers};
 use crate::ui::widgets::track_list::TrackDrag;
-use crate::ui::{context_menu, dialogs, icon_button, set_css_class, set_tooltip, track_actions};
+use crate::ui::{
+    context_menu, dialogs, disconnect_on_destroy, icon_button, set_css_class, set_tooltip,
+    track_actions,
+};
 use crate::util::{format_count, song_count, total_length};
+
+/// The side of a playlist's picture beside its name, in pixels.
+const PLAYLIST_THUMBNAIL_SIZE: i32 = 28;
 
 /// Library sections in sidebar order. The first four show how many there are.
 const SECTIONS: [(Route, &str, &str); 5] = [
@@ -128,7 +135,12 @@ fn library_list(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> (gtk::ListBox, [gtk:
         .build();
     list.update_property(&[gtk::accessible::Property::Label("Library")]);
     let counts = SECTIONS.map(|(_, title, icon)| {
-        let (row, _, count) = sidebar_row(sidebar, title, icon);
+        // As wide as a playlist's picture, so all the names line up.
+        let icon = gtk::Image::builder()
+            .icon_name(icon)
+            .width_request(PLAYLIST_THUMBNAIL_SIZE)
+            .build();
+        let (row, _, count) = sidebar_row(sidebar, title, &icon);
         list.append(&row);
         count
     });
@@ -160,6 +172,7 @@ fn playlist_list(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> gtk::ListBox {
     let weak = Rc::downgrade(ctx);
     let popover = menu.downgrade();
     let sidebar = sidebar.downgrade();
+    let row_ctx = weak.clone();
     list.bind_model(Some(&ctx.store.playlists()), move |item| {
         let playlist = item
             .downcast_ref::<PlaylistObject>()
@@ -167,7 +180,8 @@ fn playlist_list(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> gtk::ListBox {
         let sidebar = sidebar
             .upgrade()
             .expect("rows are made while the sidebar exists");
-        let row = playlist_row(&sidebar, playlist);
+        let ctx = row_ctx.upgrade().expect("rows are made while the app runs");
+        let row = playlist_row(&ctx, &sidebar, playlist);
         open_menu_on_press(&row, &weak, &popover);
         row.add_controller(add_songs_target(&weak, playlist.playlist_id()));
         row.upcast()
@@ -222,7 +236,7 @@ fn show_playlist_menu(
     let point = row
         .compute_point(&list, &graphene::Point::new(x as f32, y as f32))
         .unwrap_or_else(|| graphene::Point::new(0.0, 0.0));
-    popover.set_menu_model(Some(&playlist_actions::menu(playlist.playlist_id(), true)));
+    popover.set_menu_model(Some(&playlist_actions::menu(&playlist, true)));
     popover.set_pointing_to(Some(&gdk::Rectangle::new(
         point.x() as i32,
         point.y() as i32,
@@ -269,7 +283,10 @@ fn add_songs_target(ctx: &Weak<AppContext>, id: PlaylistId) -> gtk::DropTarget {
         let (Some(ctx), Ok(TrackDrag(ids))) = (ctx.upgrade(), value.get::<TrackDrag>()) else {
             return false;
         };
-        track_actions::add_to_playlist(&ctx, id, &ctx.store.tracks_for(&ids));
+        let Some(tracks) = playlist_songs(&ctx, &ids) else {
+            return false;
+        };
+        track_actions::add_to_playlist(&ctx, id, &tracks);
         true
     });
     target
@@ -284,10 +301,24 @@ fn new_playlist_target(ctx: &Rc<AppContext>) -> gtk::DropTarget {
         let (Some(ctx), Ok(TrackDrag(ids))) = (weak.upgrade(), value.get::<TrackDrag>()) else {
             return false;
         };
-        track_actions::add_to_new_playlist(&ctx, &ctx.store.tracks_for(&ids));
+        let Some(tracks) = playlist_songs(&ctx, &ids) else {
+            return false;
+        };
+        track_actions::add_to_new_playlist(&ctx, &tracks);
         true
     });
     target
+}
+
+/// The library songs among dropped `ids`. Songs from outside the library (opened from
+/// a file manager) can't go in playlists, so a drop of only those is refused.
+fn playlist_songs(ctx: &AppContext, ids: &[TrackId]) -> Option<Vec<TrackObject>> {
+    let tracks = ctx.store.tracks_for(ids);
+    if tracks.is_empty() && !ids.is_empty() {
+        ctx.toast("Only songs in your library can go in playlists");
+        return None;
+    }
+    Some(tracks)
 }
 
 /// Rows are rebuilt when playlists are added, removed or reordered by a rename,
@@ -314,9 +345,8 @@ fn keep_open_playlist_selected(ctx: &Rc<AppContext>, list: &gtk::ListBox) {
 fn sidebar_row(
     sidebar: &Sidebar,
     title: &str,
-    icon_name: &str,
+    icon: &impl IsA<gtk::Widget>,
 ) -> (gtk::ListBoxRow, gtk::Label, gtk::Label) {
-    let icon = gtk::Image::from_icon_name(icon_name);
     let label = gtk::Label::builder()
         .label(title)
         .xalign(0.0)
@@ -328,7 +358,7 @@ fn sidebar_row(
         .css_classes(["mp-sidebar-count", "numeric", "caption", "dim-label"])
         .build();
     let content = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    content.append(&icon);
+    content.append(icon);
     content.append(&label);
     content.append(&count);
     hide_when_icons_only(sidebar, &label);
@@ -355,8 +385,10 @@ fn sidebar_row(
     (row, label, count)
 }
 
-fn playlist_row(sidebar: &Sidebar, playlist: &PlaylistObject) -> gtk::ListBoxRow {
-    let (row, label, count) = sidebar_row(sidebar, &playlist.name(), icons::MUSIC_FOLDER);
+fn playlist_row(ctx: &AppContext, sidebar: &Sidebar, playlist: &PlaylistObject) -> gtk::ListBoxRow {
+    let picture = CoverMosaic::small(&ctx.covers, PLAYLIST_THUMBNAIL_SIZE);
+    let (row, label, count) = sidebar_row(sidebar, &playlist.name(), &picture);
+    keep_picture_current(ctx, &row, &picture, playlist);
     playlist
         .bind_property("name", &label, "label")
         .sync_create()
@@ -369,13 +401,39 @@ fn playlist_row(sidebar: &Sidebar, playlist: &PlaylistObject) -> gtk::ListBoxRow
     row
 }
 
+/// Shows `playlist`'s picture for as long as `row` exists: edits to the playlist, and
+/// songs coming and going from the library, can change it.
+fn keep_picture_current(
+    ctx: &AppContext,
+    row: &gtk::ListBoxRow,
+    picture: &CoverMosaic,
+    playlist: &PlaylistObject,
+) {
+    let store = &ctx.store;
+    picture.set_covers(&playlist_covers(store, playlist));
+    let update = {
+        let (picture, playlist) = (picture.downgrade(), playlist.downgrade());
+        move |store: &LibraryStore| {
+            if let (Some(picture), Some(playlist)) = (picture.upgrade(), playlist.upgrade()) {
+                picture.set_covers(&playlist_covers(store, &playlist));
+            }
+        }
+    };
+    for handler in [
+        store.connect_playlists_changed(update.clone()),
+        store.connect_tracks_changed(update),
+    ] {
+        disconnect_on_destroy(row, store, handler);
+    }
+}
+
 /// "Playlists" with a button to create one (just the button while showing icons only).
 fn section_header(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> gtk::Widget {
     let title = gtk::Label::builder()
         .label("Playlists")
         .xalign(0.0)
         .hexpand(true)
-        .css_classes(["mp-sidebar-heading", "caption-heading", "dim-label"])
+        .css_classes(["mp-sidebar-heading", "dim-label"])
         .build();
     let add = icon_button(
         icons::ADD,
@@ -449,7 +507,7 @@ fn footer(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> gtk::Widget {
         .halign(gtk::Align::Center)
         .css_classes(["flat", "circular"])
         .build();
-    set_tooltip(&preferences, "Preferences (Ctrl+,)");
+    set_tooltip(&preferences, &format!("Preferences ({})", primary(",")));
 
     let footer = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     footer.add_css_class("mp-sidebar-footer");

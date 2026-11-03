@@ -1,5 +1,5 @@
-//! An album card: the cover with a play button on hover, the title and one line of
-//! detail under it.
+//! An album card: the cover with a play button on hover, the title of up to two lines
+//! and one line of detail under it.
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::rc::{Rc, Weak};
@@ -9,7 +9,7 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 
 use super::actions::{self, BrowseItem};
-use super::card::{CARD_ART_SIZE, card_art, card_label};
+use super::card::{CARD_ART_SIZE, card_art, card_label, card_title};
 use crate::context::AppContext;
 use crate::model::AlbumObject;
 use crate::ui::widgets::CoverImage;
@@ -18,7 +18,7 @@ use crate::util::song_count;
 /// What an [`AlbumCard`] shows under the title.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AlbumCardDetail {
-    /// The album artist, for grids that mix artists.
+    /// The album artist, year and number of songs, for grids that mix artists.
     #[default]
     Artist,
     /// The release year, for grids of one artist's albums.
@@ -80,7 +80,7 @@ impl AlbumCard {
         imp.detail.add_css_class("dim-label");
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
         content.append(&art);
-        content.append(card_label(&imp.title, 0.0));
+        content.append(card_title(&imp.title));
         content.append(card_label(&imp.detail, 0.0));
         card.set_child(Some(&content));
 
@@ -105,7 +105,9 @@ impl AlbumCard {
         imp.title.set_label(&title);
         imp.title.set_tooltip_text(Some(&title));
         imp.detail.set_label(&match imp.detail_kind.get() {
-            AlbumCardDetail::Artist => album.artist(),
+            AlbumCardDetail::Artist => {
+                artist_year_songs(&album.artist(), album.year(), album.track_count() as usize)
+            }
             AlbumCardDetail::Year => match album.year() {
                 0 => song_count(album.track_count() as usize),
                 year => year.to_string(),
@@ -126,5 +128,28 @@ impl AlbumCard {
         if let (Some(ctx), Some(album)) = (ctx, self.album()) {
             actions::play(&ctx, &BrowseItem::Album(album));
         }
+    }
+}
+
+/// "Queen · 1975 · 18 songs", or without the year if it isn't known (`0`).
+fn artist_year_songs(artist: &str, year: u32, songs: usize) -> String {
+    let songs = song_count(songs);
+    match year {
+        0 => format!("{artist} · {songs}"),
+        year => format!("{artist} · {year} · {songs}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_detail_leaves_out_a_missing_year() {
+        assert_eq!(
+            artist_year_songs("Queen", 1975, 18),
+            "Queen · 1975 · 18 songs"
+        );
+        assert_eq!(artist_year_songs("Queen", 0, 1), "Queen · 1 song");
     }
 }

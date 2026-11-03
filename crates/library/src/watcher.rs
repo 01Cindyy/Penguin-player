@@ -248,8 +248,8 @@ impl Batcher {
 struct WatchedRoot {
     /// The folder as given, which is how the library names its tracks.
     path: PathBuf,
-    /// The folder with symlinks resolved, if that differs. macOS reports changes under
-    /// this name, so a library behind a symlink (`~/Music` → `/Volumes/Data/Music`)
+    /// The folder with symlinks resolved, if that differs. Some systems report changes
+    /// under this name, so a library behind a symlink (`~/Music` → `/mnt/data/Music`)
     /// would otherwise never hear of them.
     resolved: Option<PathBuf>,
 }
@@ -451,8 +451,8 @@ mod tests {
         assert_eq!(changed_paths(&watched(root), &events), [moved_out]);
     }
 
-    /// macOS names changes by the folder's resolved path; they are reported under the
-    /// path the library uses for a music folder reached through a symlink.
+    /// Changes named by the folder's resolved path are reported under the path the
+    /// library uses for a music folder reached through a symlink.
     #[cfg(unix)]
     #[test]
     fn changes_named_by_the_resolved_folder_are_reported() {

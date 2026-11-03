@@ -139,6 +139,12 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+case $(uname -s) in
+MINGW* | MSYS* | CYGWIN*)
+    fail "this installs on Linux; on Windows, use the .zip download (see the README)," \
+        "or make one with packaging/windows/make-bundle.sh"
+    ;;
+esac
 if [ "$action" = build ] && [ "$build" = no ]; then
     fail "--build-only and --no-build leave nothing to do"
 fi
@@ -311,7 +317,8 @@ put() {
 }
 
 # Writes the launcher with `exec_line`, which starts the program by its full path so
-# it works whether or not the folder it is in is on PATH.
+# it works whether or not the folder it is in is on PATH, with the files to open (%F)
+# when it is chosen in a file manager's "Open With".
 put_launcher() {
     make_temporary "$destdir$launcher"
     while IFS= read -r line || [ -n "$line" ]; do
@@ -321,6 +328,20 @@ put_launcher() {
         esac
     done <"$data/$APP_ID.desktop" >"$temporary"
     finish "$destdir$launcher" 644
+}
+
+# "Open With" menus come from a cache of which apps open which file types when the
+# launcher folder has one, so a stale one would leave the app out. Packages leave this
+# to the package manager.
+refresh_desktop_database() {
+    applications=$datadir/applications
+    if [ -n "$destdir" ] || [ ! -f "$applications/mimeinfo.cache" ]; then
+        return 0
+    fi
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database -q "$applications" ||
+            say "Note: couldn't update the list of apps for each file type in $applications."
+    fi
 }
 
 # Desktops read icons from a cache when the icon folder has one, so a stale one would
@@ -349,7 +370,7 @@ build_program() {
 install_files() {
     [ -f "$built" ] && [ -x "$built" ] ||
         fail "there is no program at $built: build it first (leave out --no-build)."
-    exec_line="Exec=$(desktop_exec "$program")"
+    exec_line="Exec=$(desktop_exec "$program") %F"
     set -- "$program" "$launcher" "$svg_icon" "$png_icon" "$metainfo" "$licence" "$notice"
     need_write_access "$@"
     put "$built" "$program" 755
@@ -360,6 +381,7 @@ install_files() {
     put "$root/LICENSE" "$licence" 644
     put "$root/THIRD-PARTY-LICENSES.txt" "$notice" 644
     refresh_icon_cache
+    refresh_desktop_database
 
     say "Installed Penguin Player:"
     for file in "$@"; do
@@ -404,6 +426,7 @@ uninstall_files() {
     # The licences have a folder of their own, removed once it is empty.
     rmdir -- "$destdir$licenses" 2>/dev/null || true
     refresh_icon_cache
+    refresh_desktop_database
     say "Settings, libraries and caches are kept, in the penguin-player folders of"
     say "~/.config, ~/.local/share and ~/.cache. Delete those to remove them too."
 }

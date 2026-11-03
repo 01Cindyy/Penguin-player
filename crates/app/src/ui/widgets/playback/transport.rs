@@ -11,6 +11,7 @@ use mp_core::{PlayerCommand, RepeatMode};
 use super::follow;
 use crate::context::AppContext;
 use crate::player::PlayerState;
+use crate::ui::shortcuts::primary;
 use crate::ui::{
     disconnect_on_destroy, icon_button, icon_toggle, icons, set_css_class, set_tooltip,
 };
@@ -61,11 +62,27 @@ impl TransportControls {
         let toggle_classes = ["flat", "circular", "mp-toggle-button"];
         let skip_classes = ["flat", "circular", "mp-transport-button"];
         let buttons = Buttons {
-            shuffle: icon_toggle(icons::SHUFFLE, "Shuffle (Ctrl+S)", &toggle_classes),
-            previous: icon_button(icons::SKIP_BACKWARD, "Previous (Ctrl+←)", &skip_classes),
+            shuffle: icon_toggle(
+                icons::SHUFFLE,
+                &format!("Shuffle ({})", primary("S")),
+                &toggle_classes,
+            ),
+            previous: icon_button(
+                icons::SKIP_BACKWARD,
+                &format!("Previous ({})", primary("←")),
+                &skip_classes,
+            ),
             play: icon_button(icons::PLAY, "Play (Space)", &["circular", "mp-play-button"]),
-            next: icon_button(icons::SKIP_FORWARD, "Next (Ctrl+→)", &skip_classes),
-            repeat: icon_button(icons::REPEAT, "Repeat (Ctrl+R)", &toggle_classes),
+            next: icon_button(
+                icons::SKIP_FORWARD,
+                &format!("Next ({})", primary("→")),
+                &skip_classes,
+            ),
+            repeat: icon_button(
+                icons::REPEAT,
+                &format!("Repeat ({})", primary("R")),
+                &toggle_classes,
+            ),
         };
         for button in [
             buttons.shuffle.upcast_ref::<gtk::Widget>(),
@@ -94,6 +111,21 @@ impl TransportControls {
         let buttons = self.buttons();
         buttons.shuffle.set_visible(show);
         buttons.repeat.set_visible(show);
+    }
+
+    /// Spreads the buttons evenly over the whole width the controls are given, from edge
+    /// to edge, rather than keeping them together in the middle.
+    pub fn spread(&self) {
+        self.set_halign(gtk::Align::Fill);
+        let mut button = self.first_child();
+        while let Some(current) = button {
+            let next = current.next_sibling();
+            if next.is_some() {
+                let gap = gtk::Box::builder().hexpand(true).build();
+                self.insert_child_after(&gap, Some(&current));
+            }
+            button = next;
+        }
     }
 
     fn ctx(&self) -> &Rc<AppContext> {
@@ -165,24 +197,25 @@ impl TransportControls {
     }
 
     fn update_shuffle(&self) {
-        let tooltip = if self.ctx().player.shuffle() {
-            "Shuffle: On (Ctrl+S)"
+        let state = if self.ctx().player.shuffle() {
+            "On"
         } else {
-            "Shuffle: Off (Ctrl+S)"
+            "Off"
         };
-        set_tooltip(&self.buttons().shuffle, tooltip);
+        let tooltip = format!("Shuffle: {state} ({})", primary("S"));
+        set_tooltip(&self.buttons().shuffle, &tooltip);
     }
 
     fn update_repeat(&self) {
         let mode = self.ctx().player.repeat_mode();
-        let (icon, tooltip) = match mode {
-            RepeatMode::Off => (icons::REPEAT, "Repeat: Off (Ctrl+R)"),
-            RepeatMode::All => (icons::REPEAT, "Repeat: All (Ctrl+R)"),
-            RepeatMode::One => (icons::REPEAT_ONE, "Repeat: Current Song (Ctrl+R)"),
+        let (icon, state) = match mode {
+            RepeatMode::Off => (icons::REPEAT, "Off"),
+            RepeatMode::All => (icons::REPEAT, "All"),
+            RepeatMode::One => (icons::REPEAT_ONE, "Current Song"),
         };
         let repeat = &self.buttons().repeat;
         repeat.set_icon_name(icon);
-        set_tooltip(repeat, tooltip);
+        set_tooltip(repeat, &format!("Repeat: {state} ({})", primary("R")));
         set_css_class(repeat, "mp-active", mode != RepeatMode::Off);
     }
 

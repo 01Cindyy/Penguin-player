@@ -13,10 +13,17 @@ use std::path::{Path, PathBuf};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gdk_pixbuf, gio, glib};
-use mp_core::{AppPaths, CoverId};
+use mp_core::util::stable_hash;
+use mp_core::{AppPaths, CoverId, PlaylistId};
 
 /// Pixel data of decoded covers kept in memory.
 const MEMORY_BUDGET_BYTES: usize = 64 * 1024 * 1024;
+/// Starts the file name of every image chosen for a playlist, which tells them from
+/// covers.
+const PLAYLIST_IMAGE_PREFIX: &str = "playlist-";
+/// The side of the square a playlist image is saved as, at most: page headers show them
+/// up to 232 pixels wide, or twice that on high-resolution screens.
+const PLAYLIST_IMAGE_SIZE: u32 = 512;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct CoverKey {
@@ -28,6 +35,10 @@ type Waiter = async_channel::Sender<Option<gdk::Texture>>;
 
 struct Inner {
     covers_dir: PathBuf,
+    opened_covers_dir: PathBuf,
+    /// Covers of songs from outside the library, which are in `opened_covers_dir`.
+    opened: RefCell<HashSet<CoverId>>,
+    playlist_images_dir: PathBuf,
     thumbnails_dir: PathBuf,
     memory: RefCell<Lru<CoverKey, gdk::Texture>>,
     /// Requests waiting for a decode that is already running.
@@ -73,6 +84,9 @@ impl CoverCache {
         let cache: Self = glib::Object::new();
         let inner = Inner {
             covers_dir: paths.covers_dir(),
+            opened_covers_dir: paths.opened_covers_dir(),
+            opened: RefCell::default(),
+            playlist_images_dir: paths.playlist_images_dir(),
             thumbnails_dir: paths.thumbnails_dir(),
             memory: RefCell::new(Lru::new(MEMORY_BUDGET_BYTES)),
             pending: RefCell::default(),
@@ -118,9 +132,24 @@ impl CoverCache {
         }));
     }
 
-    /// The full-size image extracted by the library scanner.
+    /// Notes that `cover` belongs to a song from outside the library, and so is in
+    /// [`AppPaths::opened_covers_dir`].
+    pub fn add_opened(&self, cover: &CoverId) {
+        self.inner().opened.borrow_mut().insert(cover.clone());
+    }
+
+    /// The full-size image extracted by the library scanner, or for a song from outside
+    /// the library, when it was opened, or the image chosen for a playlist.
     pub fn source_path(&self, cover: &CoverId) -> PathBuf {
-        self.inner().covers_dir.join(file_name(cover))
+        let inner = self.inner();
+        let dir = if file_name(cover).starts_with(PLAYLIST_IMAGE_PREFIX) {
+            &inner.playlist_images_dir
+        } else if inner.opened.borrow().contains(cover) {
+            &inner.opened_covers_dir
+        } else {
+            &inner.covers_dir
+        };
+        dir.join(file_name(cover))
     }
 
     /// A cover already decoded at `size`, if there is one; never waits.
@@ -237,8 +266,44 @@ fn file_name(cover: &CoverId) -> &str {
         .unwrap_or_default()
 }
 
+/// Copies the image at `source` to `dir` for playlist `id`, as a square from its middle,
+/// and returns its id. Each version gets its own name, as thumbnails go by the name.
+/// Slow, so call it off the main thread.
+pub fn import_playlist_image(source: &Path, id: PlaylistId, dir: &Path) -> Result<CoverId, String> {
+    let pixbuf = decode_scaled(source, PLAYLIST_IMAGE_SIZE)?;
+    let side = pixbuf.width().min(pixbuf.height());
+    let square = pixbuf.new_subpixbuf(
+        (pixbuf.width() - side) / 2,
+        (pixbuf.height() - side) / 2,
+        side,
+        side,
+    );
+    fs::create_dir_all(dir).map_err(|err| err.to_string())?;
+    let partial = dir.join(format!("{PLAYLIST_IMAGE_PREFIX}{}.part", id.0));
+    square
+        .savev(&partial, "png", &[])
+        .map_err(|err| err.to_string())?;
+    let contents = fs::read(&partial).map_err(|err| err.to_string())?;
+    let name = format!(
+        "{PLAYLIST_IMAGE_PREFIX}{}-{:016x}.png",
+        id.0,
+        stable_hash(&contents)
+    );
+    fs::rename(&partial, dir.join(&name)).map_err(|err| err.to_string())?;
+    Ok(CoverId(name))
+}
+
+/// Deletes an image chosen for a playlist, which is no longer used.
+pub fn remove_playlist_image(dir: &Path, image: &CoverId) {
+    let path = dir.join(file_name(image));
+    if let Err(err) = fs::remove_file(&path) {
+        log::debug!("Could not remove {}: {err}", path.display());
+    }
+}
+
 /// Removes the `<size>/<cover>.png` thumbnails whose cover is no longer in
-/// `covers_dir`. Leaves everything alone if the covers can't be listed.
+/// `covers_dir`, and leaves those of images chosen for playlists, which are elsewhere.
+/// Leaves everything alone if the covers can't be listed.
 fn remove_orphaned_thumbnails(covers_dir: &Path, thumbnails_dir: &Path) {
     let stem = |name: &OsStr| -> Option<String> {
         let name = name.to_str()?;
@@ -263,10 +328,9 @@ fn remove_orphaned_thumbnails(covers_dir: &Path, thumbnails_dir: &Path) {
         };
         for path in thumbnails.filter_map(|entry| Some(entry.ok()?.path())) {
             let is_png = path.extension().is_some_and(|extension| extension == "png");
-            let orphaned = path
-                .file_name()
-                .and_then(stem)
-                .is_some_and(|stem| !in_use.contains(&stem));
+            let orphaned = path.file_name().and_then(stem).is_some_and(|stem| {
+                !in_use.contains(&stem) && !stem.starts_with(PLAYLIST_IMAGE_PREFIX)
+            });
             if is_png
                 && orphaned
                 && let Err(err) = fs::remove_file(&path)
@@ -444,7 +508,12 @@ mod tests {
         fs::write(covers.join("00000000000000aa.jpg"), "").unwrap();
         for size in ["36", "200"] {
             fs::create_dir_all(thumbnails.join(size)).unwrap();
-            for name in ["00000000000000aa.png", "00000000000000bb.png", "notes.txt"] {
+            for name in [
+                "00000000000000aa.png",
+                "00000000000000bb.png",
+                "playlist-1-00000000000000cc.png",
+                "notes.txt",
+            ] {
                 fs::write(thumbnails.join(size).join(name), "").unwrap();
             }
         }
@@ -455,7 +524,14 @@ mod tests {
                 .map(|entry| entry.unwrap().file_name())
                 .collect();
             left.sort();
-            assert_eq!(left, ["00000000000000aa.png", "notes.txt"]);
+            assert_eq!(
+                left,
+                [
+                    "00000000000000aa.png",
+                    "notes.txt",
+                    "playlist-1-00000000000000cc.png"
+                ]
+            );
         }
 
         // Without a covers folder to compare with, nothing is deleted.
@@ -513,6 +589,41 @@ mod tests {
             load(&unreadable).is_none(),
             "a broken image isn't decoded again"
         );
+    }
+
+    #[test]
+    fn playlist_images_are_saved_as_squares_from_the_middle() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("photo.png");
+        let pixbuf =
+            gdk_pixbuf::Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, false, 8, 1000, 800).unwrap();
+        pixbuf.fill(0x3366_99ff);
+        pixbuf.savev(&source, "png", &[]).unwrap();
+
+        let images = dir.path().join("playlist-images");
+        let image = import_playlist_image(&source, PlaylistId(7), &images).unwrap();
+        assert!(image.0.starts_with("playlist-7-"));
+        let saved = images.join(&image.0);
+        let (_, width, height) = gdk_pixbuf::Pixbuf::file_info(&saved).unwrap();
+        assert_eq!((width, height), (512, 512));
+
+        let cache = CoverCache::new(&AppPaths::from_root(dir.path()));
+        assert_eq!(
+            cache.source_path(&image),
+            dir.path().join("data/playlist-images").join(&image.0)
+        );
+
+        remove_playlist_image(&images, &image);
+        assert!(!saved.exists());
+    }
+
+    #[test]
+    fn files_that_are_not_images_are_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("notes.png");
+        fs::write(&source, "not an image").unwrap();
+        let images = dir.path().join("playlist-images");
+        assert!(import_playlist_image(&source, PlaylistId(7), &images).is_err());
     }
 
     #[test]

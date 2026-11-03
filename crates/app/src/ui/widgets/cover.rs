@@ -10,6 +10,7 @@ use mp_core::CoverId;
 
 use crate::services::covers::CoverCache;
 use crate::ui::icons;
+use crate::ui::widgets::equaliser;
 
 /// The smallest a cover that can shrink gets.
 const SHRUNK_SIZE: i32 = 96;
@@ -69,8 +70,8 @@ mod imp {
         pub(super) cover: RefCell<Option<CoverId>>,
         pub(super) picture: gtk::Picture,
         pub(super) placeholder: gtk::Image,
-        /// Drawn over the art while its track is playing.
-        pub(super) playing_icon: gtk::Image,
+        /// An equaliser on a scrim, drawn over the art while its track is playing.
+        pub(super) playing_icon: adw::Bin,
     }
 
     #[glib::object_subclass]
@@ -103,7 +104,6 @@ mod imp {
             self.picture.set_visible(false);
             self.picture.set_parent(&*obj);
 
-            self.playing_icon.set_icon_name(Some(icons::NOW_PLAYING));
             self.playing_icon.add_css_class("mp-cover-playing-icon");
             self.playing_icon.set_visible(false);
             self.playing_icon.set_parent(&*obj);
@@ -133,7 +133,10 @@ mod imp {
 
         fn size_allocate(&self, width: i32, height: i32, baseline: i32) {
             self.picture.allocate(width, height, baseline, None);
-            for icon in [&self.placeholder, &self.playing_icon] {
+            for icon in [
+                self.placeholder.upcast_ref::<gtk::Widget>(),
+                self.playing_icon.upcast_ref(),
+            ] {
                 // A shrunk cover may be smaller than its icons, which stay centred.
                 let (icon_width, ..) = icon.measure(gtk::Orientation::Horizontal, -1);
                 let (icon_height, ..) = icon.measure(gtk::Orientation::Vertical, -1);
@@ -194,8 +197,6 @@ impl CoverImage {
             return;
         }
         imp.placeholder.set_pixel_size((size * 3 / 10).max(16));
-        imp.playing_icon
-            .set_pixel_size((size * 4 / 9).clamp(16, 48));
         self.queue_resize();
         self.reload(true);
     }
@@ -220,7 +221,12 @@ impl CoverImage {
 
     /// Shows a now-playing indicator over the art, as track lists do for the current track.
     pub fn set_playing(&self, playing: bool) {
-        self.imp().playing_icon.set_visible(playing);
+        let icon = &self.imp().playing_icon;
+        // Made when first needed: most covers never show one.
+        if playing && icon.child().is_none() {
+            icon.set_child(Some(&equaliser()));
+        }
+        icon.set_visible(playing);
     }
 
     /// Shows the cover at the current size: straight away if it is in memory,

@@ -20,13 +20,16 @@ pub const GROUP: &str = "playlist";
 
 type PlaylistAction = fn(&Rc<AppContext>, &PlaylistObject);
 
-/// `play`, `shuffle`, `play-next`, `enqueue`, `rename` and `delete`.
+/// `play`, `shuffle`, `play-next`, `enqueue`, `choose-image`, `remove-image`, `rename` and
+/// `delete`.
 pub fn action_group(ctx: &Rc<AppContext>) -> gio::SimpleActionGroup {
-    let actions: [(&str, PlaylistAction); 6] = [
+    let actions: [(&str, PlaylistAction); 8] = [
         ("play", play),
         ("shuffle", shuffle),
         ("play-next", play_next),
         ("enqueue", enqueue),
+        ("choose-image", dialogs::choose_playlist_image),
+        ("remove-image", dialogs::remove_playlist_image),
         ("rename", dialogs::rename_playlist),
         ("delete", dialogs::delete_playlist),
     ];
@@ -48,10 +51,10 @@ pub fn action_group(ctx: &Rc<AppContext>) -> gio::SimpleActionGroup {
     group
 }
 
-/// The menu for playlist `id`: playback, then Rename… and Delete…. `with_play` adds
-/// "Play" for places without a play button of their own.
-pub fn menu(id: PlaylistId, with_play: bool) -> gio::Menu {
-    let target = id.0.to_variant();
+/// The menu for `playlist`: playback, then its image, then Rename… and Delete….
+/// `with_play` adds "Play" for places without a play button of their own.
+pub fn menu(playlist: &PlaylistObject, with_play: bool) -> gio::Menu {
+    let target = playlist.playlist_id().0.to_variant();
     let item = |label: &str, action: &str| {
         let item = gio::MenuItem::new(Some(label), None);
         item.set_action_and_target_value(Some(&format!("{GROUP}.{action}")), Some(&target));
@@ -63,12 +66,18 @@ pub fn menu(id: PlaylistId, with_play: bool) -> gio::Menu {
     }
     playback.append_item(&item("Play Next", "play-next"));
     playback.append_item(&item("Add to Queue", "enqueue"));
+    let image = gio::Menu::new();
+    image.append_item(&item("Choose Image…", "choose-image"));
+    if playlist.image().is_some() {
+        image.append_item(&item("Remove Image", "remove-image"));
+    }
     let manage = gio::Menu::new();
     manage.append_item(&item("Rename…", "rename"));
     manage.append_item(&item("Delete…", "delete"));
 
     let menu = gio::Menu::new();
     menu.append_section(None, &playback);
+    menu.append_section(None, &image);
     menu.append_section(None, &manage);
     menu
 }

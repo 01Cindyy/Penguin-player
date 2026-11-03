@@ -66,6 +66,13 @@ fn now_playing_group(ctx: &Rc<AppContext>) -> adw::PreferencesGroup {
         ctx.settings().quality_details,
         AppContext::set_quality_details,
     ));
+    group.add(&switch_row(
+        ctx,
+        "Waveform Seek Bar",
+        "Use the song’s waveform as the seek bar instead of a plain line",
+        ctx.settings().waveform_seek_bar,
+        AppContext::set_waveform_seek_bar,
+    ));
     group
 }
 
@@ -178,8 +185,10 @@ impl Appearance {
             .title("Translucent Window")
             .subtitle("Let your wallpaper show through, with any theme")
             .build();
+        // Only Linux desktops let apps ask for blur.
         let blur_row = adw::SwitchRow::builder()
             .title("Blur Behind Window")
+            .visible(cfg!(target_os = "linux"))
             .build();
         let transparency_group = adw::PreferencesGroup::builder()
             .title("Transparency")

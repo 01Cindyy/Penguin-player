@@ -9,6 +9,14 @@
 use gtk::prelude::*;
 use gtk::{gdk, glib};
 
+/// The modifier of most shortcuts: Ctrl, like GTK's `<Primary>`.
+const PRIMARY: gdk::ModifierType = gdk::ModifierType::CONTROL_MASK;
+
+/// A shortcut with the primary modifier, written for tooltips: "Ctrl+S".
+pub fn primary(key: &str) -> String {
+    format!("Ctrl+{key}")
+}
+
 /// Key, required modifiers and the `app.` action it triggers.
 const PLAYBACK_SHORTCUTS: &[(gdk::Key, gdk::ModifierType, &str)] = &[
     (
@@ -16,32 +24,12 @@ const PLAYBACK_SHORTCUTS: &[(gdk::Key, gdk::ModifierType, &str)] = &[
         gdk::ModifierType::empty(),
         "app.play-pause",
     ),
-    (gdk::Key::Right, gdk::ModifierType::CONTROL_MASK, "app.next"),
-    (
-        gdk::Key::Left,
-        gdk::ModifierType::CONTROL_MASK,
-        "app.previous",
-    ),
-    (
-        gdk::Key::Up,
-        gdk::ModifierType::CONTROL_MASK,
-        "app.volume-up",
-    ),
-    (
-        gdk::Key::Down,
-        gdk::ModifierType::CONTROL_MASK,
-        "app.volume-down",
-    ),
-    (
-        gdk::Key::s,
-        gdk::ModifierType::CONTROL_MASK,
-        "app.toggle-shuffle",
-    ),
-    (
-        gdk::Key::r,
-        gdk::ModifierType::CONTROL_MASK,
-        "app.cycle-repeat",
-    ),
+    (gdk::Key::Right, PRIMARY, "app.next"),
+    (gdk::Key::Left, PRIMARY, "app.previous"),
+    (gdk::Key::Up, PRIMARY, "app.volume-up"),
+    (gdk::Key::Down, PRIMARY, "app.volume-down"),
+    (gdk::Key::s, PRIMARY, "app.toggle-shuffle"),
+    (gdk::Key::r, PRIMARY, "app.cycle-repeat"),
 ];
 
 /// Dedicated media keys, for platforms where no media-controls service takes them.
@@ -119,7 +107,6 @@ mod tests {
 
     #[test]
     fn shortcuts_respect_text_fields() {
-        let ctrl = gdk::ModifierType::CONTROL_MASK;
         let none = gdk::ModifierType::empty();
         assert_eq!(
             action_for(gdk::Key::space, none, || false),
@@ -127,7 +114,7 @@ mod tests {
         );
         assert_eq!(action_for(gdk::Key::space, none, || true), None);
         assert_eq!(
-            action_for(gdk::Key::Right, ctrl, || false),
+            action_for(gdk::Key::Right, PRIMARY, || false),
             Some("app.next")
         );
         assert_eq!(action_for(gdk::Key::Right, none, || false), None);

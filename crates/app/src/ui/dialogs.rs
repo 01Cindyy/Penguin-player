@@ -4,11 +4,12 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use adw::prelude::*;
-use gtk::gio;
+use gtk::{gio, glib};
 use mp_core::{PlaylistId, TrackId};
 
 use crate::context::AppContext;
 use crate::model::PlaylistObject;
+use crate::services::covers;
 
 /// The response that confirms a playlist name.
 const ACCEPT: &str = "accept";
@@ -114,13 +115,101 @@ pub fn delete_playlist(ctx: &Rc<AppContext>, playlist: &PlaylistObject) {
         if response != "delete" {
             return;
         }
+        let image = ctx.store.playlist(id).and_then(|playlist| playlist.image());
         let deleted =
             ctx.edit_library("delete the playlist", |library| library.delete_playlist(id));
         if deleted.is_some() {
+            if let Some(image) = image {
+                covers::remove_playlist_image(&ctx.paths.playlist_images_dir(), &image);
+            }
             ctx.refresh_playlists();
             ctx.toast(&format!("Deleted “{name}”"));
         }
     });
+}
+
+/// Asks for an image to show for `playlist` in place of its songs' covers. It is copied
+/// to the app's own folder, so moving or deleting the original doesn't matter.
+pub fn choose_playlist_image(ctx: &Rc<AppContext>, playlist: &PlaylistObject) {
+    let images = gtk::FileFilter::new();
+    images.set_name(Some("Images"));
+    images.add_pixbuf_formats();
+    let filters = gio::ListStore::new::<gtk::FileFilter>();
+    filters.append(&images);
+    let dialog = gtk::FileDialog::builder()
+        .title("Choose Playlist Image")
+        .modal(true)
+        .filters(&filters)
+        .default_filter(&images)
+        .build();
+    let weak = Rc::downgrade(ctx);
+    let id = playlist.playlist_id();
+    let parent = ctx.window();
+    dialog.open(parent.as_ref(), gio::Cancellable::NONE, move |result| {
+        let Some(ctx) = weak.upgrade() else { return };
+        match result {
+            Ok(file) => match file.path() {
+                Some(path) => use_playlist_image(&ctx, id, path),
+                None => ctx.toast("Only images on this computer can be used"),
+            },
+            Err(err) if err.matches(gtk::DialogError::Dismissed) => {}
+            Err(err) => log::warn!("Image chooser failed: {err}"),
+        }
+    });
+}
+
+/// Copies the image at `path` to the app's folder and shows it for playlist `id`.
+fn use_playlist_image(ctx: &Rc<AppContext>, id: PlaylistId, path: PathBuf) {
+    let weak = Rc::downgrade(ctx);
+    let dir = ctx.paths.playlist_images_dir();
+    glib::spawn_future_local(async move {
+        let imported = {
+            let dir = dir.clone();
+            gio::spawn_blocking(move || covers::import_playlist_image(&path, id, &dir)).await
+        };
+        let Some(ctx) = weak.upgrade() else { return };
+        let image = match imported {
+            Ok(Ok(image)) => image,
+            Ok(Err(err)) => {
+                log::warn!("Could not use the playlist image: {err}");
+                ctx.toast("Couldn’t use that image");
+                return;
+            }
+            Err(_) => {
+                log::error!("Copying the playlist image panicked");
+                ctx.toast("Couldn’t use that image");
+                return;
+            }
+        };
+        let previous = ctx.store.playlist(id).and_then(|playlist| playlist.image());
+        let saved = ctx.edit_library("save the playlist’s image", |library| {
+            library.set_playlist_image(id, Some(&image))
+        });
+        let replaced = if saved.is_some() {
+            previous
+        } else {
+            Some(image.clone())
+        };
+        if let Some(unused) = replaced.filter(|unused| saved.is_none() || *unused != image) {
+            covers::remove_playlist_image(&dir, &unused);
+        }
+        ctx.refresh_playlists();
+    });
+}
+
+/// Goes back to showing the covers of `playlist`'s songs.
+pub fn remove_playlist_image(ctx: &Rc<AppContext>, playlist: &PlaylistObject) {
+    let Some(image) = playlist.image() else {
+        return;
+    };
+    let id = playlist.playlist_id();
+    let saved = ctx.edit_library("remove the playlist’s image", |library| {
+        library.set_playlist_image(id, None)
+    });
+    if saved.is_some() {
+        covers::remove_playlist_image(&ctx.paths.playlist_images_dir(), &image);
+        ctx.refresh_playlists();
+    }
 }
 
 /// Asks before removing every song from the library; the music files and playlists

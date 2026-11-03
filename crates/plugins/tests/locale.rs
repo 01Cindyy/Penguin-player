@@ -1,7 +1,7 @@
 //! Plugins run in the "C" locale, even though GTK switches the app to the user's.
 //! Changing the locale affects the whole process, so these tests have their own binary.
 
-#![cfg(any(target_os = "linux", target_os = "macos"))]
+#![cfg(target_os = "linux")]
 
 mod common;
 

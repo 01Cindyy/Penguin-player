@@ -1,7 +1,7 @@
 -- Finds lyrics on LRCLIB (https://lrclib.net), a free and open lyrics database, for
 -- songs that have none of their own, or for songs whose own lyrics the user would
--- rather replace. Only a song's title and artist are sent; its album and length stay
--- here and help pick the right match.
+-- rather replace. Only a song's title, artist and album are sent; its length stays
+-- here and helps pick the right match.
 
 local search = require("search")
 
@@ -38,7 +38,7 @@ end
 
 local function find(track, done)
   -- A title alone matches too many songs.
-  if track.artist == "" then
+  if track.artist == "" and track.album == "" then
     done(nil)
     return
   end

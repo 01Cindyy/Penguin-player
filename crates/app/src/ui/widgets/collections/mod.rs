@@ -10,7 +10,7 @@ mod queue_row;
 pub mod reorder;
 mod up_next_list;
 
-pub use cover_mosaic::{CoverMosaic, MOSAIC_TILES};
+pub use cover_mosaic::{CoverMosaic, playlist_covers};
 pub use distinct_rows::DistinctRows;
 pub use missing_entries::MissingEntries;
 pub use now_playing_card::NowPlayingCard;

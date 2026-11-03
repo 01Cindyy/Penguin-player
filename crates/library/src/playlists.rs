@@ -9,14 +9,15 @@ use std::path::Path;
 
 use mp_core::search::normalize;
 use mp_core::util::unix_now;
-use mp_core::{Playlist, PlaylistEntry, PlaylistId, PlaylistItemId, TrackId};
+use mp_core::{CoverId, Playlist, PlaylistEntry, PlaylistId, PlaylistItemId, TrackId};
 use rusqlite::{Connection, OptionalExtension, Row};
 
 use crate::{LibraryError, Result, paths};
 
 /// All playlists sorted by name (ignoring case and accents), with their entries.
 pub(crate) fn all(conn: &Connection) -> Result<Vec<Playlist>> {
-    let mut statement = conn.prepare_cached("SELECT id, name, created, modified FROM playlists")?;
+    let mut statement =
+        conn.prepare_cached("SELECT id, name, created, modified, image FROM playlists")?;
     let mut playlists = statement
         .query_map([], playlist_from_row)?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -29,8 +30,8 @@ pub(crate) fn all(conn: &Connection) -> Result<Vec<Playlist>> {
 }
 
 pub(crate) fn by_id(conn: &Connection, id: PlaylistId) -> Result<Option<Playlist>> {
-    let mut statement =
-        conn.prepare_cached("SELECT id, name, created, modified FROM playlists WHERE id = ?1")?;
+    let mut statement = conn
+        .prepare_cached("SELECT id, name, created, modified, image FROM playlists WHERE id = ?1")?;
     let Some(mut playlist) = statement.query_row([id.0], playlist_from_row).optional()? else {
         return Ok(None);
     };
@@ -50,6 +51,13 @@ pub(crate) fn rename(conn: &Connection, id: PlaylistId, name: &str) -> Result<()
     let changed = conn
         .prepare_cached("UPDATE playlists SET name = ?2, modified = ?3 WHERE id = ?1")?
         .execute((id.0, name, unix_now()))?;
+    expect_playlist(changed, id)
+}
+
+pub(crate) fn set_image(conn: &Connection, id: PlaylistId, image: Option<&CoverId>) -> Result<()> {
+    let changed = conn
+        .prepare_cached("UPDATE playlists SET image = ?2, modified = ?3 WHERE id = ?1")?
+        .execute((id.0, image.map(|image| image.0.as_str()), unix_now()))?;
     expect_playlist(changed, id)
 }
 
@@ -240,6 +248,7 @@ fn playlist_from_row(row: &Row) -> rusqlite::Result<Playlist> {
         name: row.get(1)?,
         created: row.get(2)?,
         modified: row.get(3)?,
+        image: row.get::<_, Option<String>>(4)?.map(CoverId),
         entries: Vec::new(),
     })
 }

@@ -213,7 +213,7 @@ tag; number fields are `nil` when unknown.
 
 | Field | Type | Example |
 |---|---|---|
-| `id` | integer | `42` (stable while the file keeps its path) |
+| `id` | integer | `42` (stable while the file keeps its path). Songs opened from outside the library have ids below zero, which last until the app quits. |
 | `title` | string | `"So What"` (never empty: falls back to the file name) |
 | `artist` | string | `"Miles Davis"` |
 | `album` | string | `"Kind of Blue"` |
@@ -537,9 +537,11 @@ ask for their permissions first. Their source is in
 
 Finds lyrics on [LRCLIB](https://lrclib.net), a free and open lyrics database, for songs
 that have none of their own. It only searches when you open a song's lyrics, and only
-sends the song's title and artist; the album and length stay on the computer and pick
-the best of the results, preferring timed lyrics. Songs LRCLIB has nothing for are
-remembered for a month, so they aren't searched again every time.
+sends the song's title, artist and album; the length stays on the computer and helps
+pick the best of the results, preferring timed lyrics. It searches by title and artist
+first, then by title and album, so a song whose artist or album LRCLIB names a little
+differently is still found; the title has to match either way. Songs LRCLIB has nothing
+for are remembered for a month, so they aren't searched again every time.
 
 **Prefer Online Lyrics** has it replace songs' own lyrics too: **Over Untimed Lyrics**
 swaps untimed lyrics for timed ones from LRCLIB, and **Always** uses LRCLIB's wherever it

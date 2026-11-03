@@ -11,9 +11,8 @@ pub const APP_NAME: &str = "Penguin Player";
 /// with [`APP_QUALIFIER`] and [`APP_ORGANIZATION`].
 pub const APP_ID: &str = "io.github._01cindyy.Penguin_player";
 
-/// The parts of [`APP_ID`] before the app's own name. macOS and Windows also name the
-/// app's folders after them (`~/Library/Application Support/io.github._01cindyy.penguin-player`,
-/// `%APPDATA%\_01cindyy\penguin-player`).
+/// The parts of [`APP_ID`] before the app's own name. Windows also names the app's
+/// folders after them (`%APPDATA%\_01cindyy\penguin-player`).
 pub const APP_QUALIFIER: &str = "io.github";
 pub const APP_ORGANIZATION: &str = "_01cindyy";
 

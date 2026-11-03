@@ -25,13 +25,15 @@ use gtk::{gio, glib};
 use mp_core::APP_NAME;
 
 use crate::context::AppContext;
+use crate::player::{Player, PlayerState};
 use crate::ui::icons;
 use crate::ui::navigation::Route;
 use crate::ui::player_bar::PlayerBar;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::widgets::{Grows, Resizable, resize_handle};
 use crate::ui::{
-    folder_banner, max_width_breakpoint, onboarding, queue_panel, set_tooltip, shortcuts,
+    folder_banner, max_width_breakpoint, onboarding, queue_panel, set_css_class, set_tooltip,
+    shortcuts,
 };
 
 /// Below this width (in sp) the queue panel overlays the content instead of sitting
@@ -124,6 +126,7 @@ impl MainWindow {
 
         window.restore_window_state();
         window.build_layout();
+        window.follow_playback();
         window.add_breakpoints();
         shortcuts::install(window.upcast_ref());
 
@@ -175,6 +178,21 @@ impl MainWindow {
             .bidirectional()
             .sync_create()
             .build();
+    }
+
+    /// Equalisers hold still (`mp-paused`) unless music is playing.
+    fn follow_playback(&self) {
+        let update = |window: &Self, player: &Player| {
+            set_css_class(window, "mp-paused", player.state() != PlayerState::Playing);
+        };
+        let player = self.ctx().player.clone();
+        update(self, &player);
+        let weak = self.downgrade();
+        player.connect_state_notify(move |player| {
+            if let Some(window) = weak.upgrade() {
+                update(&window, player);
+            }
+        });
     }
 
     fn show_onboarding(&self) {

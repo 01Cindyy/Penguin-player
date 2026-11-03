@@ -2,6 +2,9 @@
 //!
 //! It follows playback, except while it is being dragged: then it only previews the
 //! time, and seeks once released.
+//!
+//! With the Waveform Seek Bar on, the slider's line is hidden and the song's waveform is
+//! drawn in its place. It is still the slider that takes the pointer and the keyboard.
 
 use std::cell::{Cell, OnceCell};
 use std::rc::Rc;
@@ -15,11 +18,13 @@ use mp_core::util::format_duration;
 
 use super::follow;
 use crate::context::AppContext;
-use crate::ui::disconnect_on_destroy;
+use crate::ui::widgets::Waveform;
+use crate::ui::{disconnect_on_destroy, set_css_class};
 
 struct Parts {
     elapsed: gtk::Label,
     scale: gtk::Scale,
+    waveform: Waveform,
     duration: gtk::Label,
 }
 
@@ -77,6 +82,7 @@ impl SeekBar {
                 .css_classes(["mp-seek-bar"])
                 .tooltip_text("Seek")
                 .build(),
+            waveform: Waveform::new(),
             duration: time_label(0.0),
         };
         parts.scale.set_range(0.0, 1.0);
@@ -85,6 +91,8 @@ impl SeekBar {
             .scale
             .update_property(&[gtk::accessible::Property::Label("Playback position")]);
         bar.attach(&parts.elapsed, 0, 1, 1, 1);
+        // In the same cell, under the slider.
+        bar.attach(&parts.waveform, 1, 1, 1, 1);
         bar.attach(&parts.scale, 1, 1, 1, 1);
         bar.attach(&parts.duration, 2, 1, 1, 1);
         let imp = bar.imp();
@@ -96,6 +104,8 @@ impl SeekBar {
         bar.update_track();
         bar.update_duration();
         bar.update_position();
+        bar.update_levels();
+        bar.update_mode();
         bar
     }
 
@@ -105,12 +115,13 @@ impl SeekBar {
     }
 
     /// Takes the slider out, for a layout that shows it elsewhere; it keeps working
-    /// there. [`Self::restore_slider`] puts it back.
+    /// there, always as a plain line. [`Self::restore_slider`] puts it back.
     pub fn take_slider(&self) -> gtk::Scale {
         let scale = &self.parts().scale;
         if scale.parent().as_ref() == Some(self.upcast_ref()) {
             self.remove(scale);
         }
+        self.update_mode();
         scale.clone()
     }
 
@@ -120,6 +131,21 @@ impl SeekBar {
         if scale.parent().is_none() {
             self.attach(scale, 1, 1, 1, 1);
         }
+        self.update_mode();
+    }
+
+    /// How tall the waveform's bars are at most, in pixels.
+    pub fn set_waveform_height(&self, height: i32) {
+        self.parts().waveform.set_bar_height(height);
+        self.update_mode();
+    }
+
+    /// Puts the times right at the row's ends, for a layout that lines the row up with
+    /// something else.
+    pub fn pin_times_to_ends(&self) {
+        let parts = self.parts();
+        parts.elapsed.set_xalign(0.0);
+        parts.duration.set_xalign(1.0);
     }
 
     fn ctx(&self) -> &Rc<AppContext> {
@@ -188,11 +214,69 @@ impl SeekBar {
         ] {
             disconnect_on_destroy(self, player, handler);
         }
+
+        let ctx = self.ctx();
+        let handler = ctx
+            .waveforms
+            .connect_changed(follow(self, Self::update_levels));
+        disconnect_on_destroy(self, &ctx.waveforms, handler);
+        let handler = ctx
+            .display
+            .connect_waveform_seek_bar_notify(follow(self, Self::update_mode));
+        disconnect_on_destroy(self, &ctx.display, handler);
+        ctx.display
+            .bind_property("bar-radius", &self.parts().waveform, "bar-radius")
+            .sync_create()
+            .build();
+
+        let adjustment = self.parts().scale.adjustment();
+        adjustment.connect_value_changed(follow(self, Self::update_played));
+        adjustment.connect_changed(follow(self, Self::update_played));
+    }
+
+    /// Shows the waveform or the plain line. Clicks only count on the slider's trough, so
+    /// over the waveform the trough is as tall as the bars, and what is drawn on it is
+    /// hidden, however a theme styles it.
+    fn update_mode(&self) {
+        let parts = self.parts();
+        let on = self.ctx().display.waveform_seek_bar();
+        let here = parts.scale.parent().as_ref() == Some(self.upcast_ref());
+        let over_waveform = on && here;
+        set_css_class(self, "mp-seek-waveform", on);
+        parts.waveform.set_visible(on);
+        let Some(trough) = parts.scale.first_child() else {
+            return;
+        };
+        let height = if over_waveform {
+            parts.waveform.bar_height()
+        } else {
+            -1
+        };
+        trough.set_size_request(-1, height);
+        let mut part = trough.first_child();
+        while let Some(widget) = part {
+            widget.set_opacity(if over_waveform { 0.0 } else { 1.0 });
+            part = widget.next_sibling();
+        }
+    }
+
+    fn update_levels(&self) {
+        self.parts()
+            .waveform
+            .set_levels(self.ctx().waveforms.levels());
+    }
+
+    fn update_played(&self) {
+        let adjustment = self.parts().scale.adjustment();
+        let played = adjustment.value() / adjustment.upper().max(1.0);
+        self.parts().waveform.set_played(played);
     }
 
     fn update_track(&self) {
         let has_track = self.ctx().player.current_track().is_some();
-        self.parts().scale.set_sensitive(has_track);
+        let parts = self.parts();
+        parts.scale.set_sensitive(has_track);
+        parts.waveform.set_sensitive(has_track);
     }
 
     fn update_duration(&self) {

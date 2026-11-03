@@ -22,7 +22,7 @@ memchr = "2"
 ureq = "3"
 
 # Only for switching the plugin thread to the "C" locale (see `src/sandbox/locale.rs`).
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
 
 [dev-dependencies]

@@ -6,7 +6,7 @@ use std::cell::Cell;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use mp_core::Settings;
+use mp_core::{CornerStyle, Settings};
 
 mod imp {
     use super::*;
@@ -21,6 +21,12 @@ mod imp {
         /// format.
         #[property(get, set)]
         quality_details: Cell<bool>,
+        /// Use the song's waveform as the seek bar instead of a plain line.
+        #[property(get, set)]
+        waveform_seek_bar: Cell<bool>,
+        /// How rounded the visualiser's and waveform's bars are, in pixels.
+        #[property(get, set)]
+        bar_radius: Cell<f32>,
     }
 
     #[glib::object_subclass]
@@ -44,6 +50,18 @@ impl DisplayOptions {
         glib::Object::builder()
             .property("visualizer", settings.visualizer)
             .property("quality-details", settings.quality_details)
+            .property("waveform-seek-bar", settings.waveform_seek_bar)
+            .property("bar-radius", bar_radius(settings.corners))
             .build()
+    }
+}
+
+/// The corner radius of bars with `corners`. They are 4 pixels wide, so 2 makes their
+/// ends round.
+pub fn bar_radius(corners: CornerStyle) -> f32 {
+    match corners {
+        CornerStyle::Round => 2.0,
+        CornerStyle::Slight => 1.0,
+        CornerStyle::Square => 0.0,
     }
 }

@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 use gtk::gio;
 use gtk::glib;
@@ -76,6 +77,9 @@ mod imp {
         pub(super) artist_index: RefCell<HashMap<String, ArtistObject>>,
         pub(super) playlist_index: RefCell<HashMap<PlaylistId, PlaylistObject>>,
         pub(super) formats: RefCell<Vec<(AudioFormat, usize)>>,
+        /// Songs from outside the library (see `add_opened`), by id and by path.
+        pub(super) opened: RefCell<HashMap<TrackId, TrackObject>>,
+        pub(super) opened_paths: RefCell<HashMap<PathBuf, TrackId>>,
 
         /// True once library data has arrived for the first time.
         #[property(get)]
@@ -99,6 +103,8 @@ mod imp {
                 artist_index: RefCell::default(),
                 playlist_index: RefCell::default(),
                 formats: RefCell::default(),
+                opened: RefCell::default(),
+                opened_paths: RefCell::default(),
                 loaded: Cell::default(),
                 track_count: Cell::default(),
                 total_duration_ms: Cell::default(),
@@ -166,11 +172,47 @@ impl LibraryStore {
         self.imp().playlists.clone()
     }
 
+    /// A track of the library, or a song from outside it that was opened.
     pub fn track(&self, id: TrackId) -> Option<TrackObject> {
-        self.imp().track_index.borrow().get(&id).cloned()
+        let imp = self.imp();
+        let library = imp.track_index.borrow().get(&id).cloned();
+        library.or_else(|| imp.opened.borrow().get(&id).cloned())
     }
 
-    /// Looks up several tracks, skipping ids that are no longer in the library.
+    /// Keeps a song from outside the library, opened from a file manager say, so it can
+    /// be played, and returns its id. Its id is below zero, which library tracks never
+    /// have, and lasts until the app quits; a song opened again keeps its first id.
+    /// Opened songs aren't part of the lists, albums or artists.
+    pub fn add_opened(&self, mut track: Track) -> TrackId {
+        let imp = self.imp();
+        if let Some(&id) = imp.opened_paths.borrow().get(&track.path) {
+            return id;
+        }
+        let mut opened = imp.opened.borrow_mut();
+        let id = TrackId(-(opened.len() as i64) - 1);
+        track.id = id;
+        imp.opened_paths.borrow_mut().insert(track.path.clone(), id);
+        opened.insert(id, TrackObject::new(track));
+        id
+    }
+
+    /// The id of the opened song at `path` (see [`Self::add_opened`]).
+    pub fn opened_at(&self, path: &Path) -> Option<TrackId> {
+        self.imp().opened_paths.borrow().get(path).copied()
+    }
+
+    /// The id of each library track, by its path.
+    pub fn track_paths(&self) -> HashMap<PathBuf, TrackId> {
+        self.imp()
+            .track_index
+            .borrow()
+            .iter()
+            .map(|(id, track)| (track.track().path.clone(), *id))
+            .collect()
+    }
+
+    /// Looks up several tracks, skipping ids that are no longer in the library, and songs
+    /// from outside it.
     pub fn tracks_for(&self, ids: &[TrackId]) -> Vec<TrackObject> {
         let index = self.imp().track_index.borrow();
         ids.iter().filter_map(|id| index.get(id).cloned()).collect()
@@ -385,6 +427,30 @@ mod tests {
     }
 
     #[test]
+    fn opened_songs_play_but_stay_out_of_the_library() {
+        let store = LibraryStore::new();
+        store.replace_tracks(library());
+        let mut outside = track(0, "Download", "Someone", "Elsewhere");
+        outside.path = "/downloads/Download.flac".into();
+
+        let id = store.add_opened(outside.clone());
+        assert!(id.0 < 0);
+        assert_eq!(store.track(id).unwrap().title(), "Download");
+        assert_eq!(store.add_opened(outside.clone()), id, "opened again");
+        assert_eq!(store.opened_at(&outside.path), Some(id));
+        let mut another = outside;
+        another.path = "/downloads/Another.flac".into();
+        assert_ne!(store.add_opened(another), id);
+
+        assert!(store.tracks_for(&[id]).is_empty());
+        assert!(!store.track_ids().contains(&id));
+        assert_eq!(store.track_paths().len(), 3);
+        // A library refresh keeps them.
+        store.replace_tracks(library());
+        assert!(store.track(id).is_some());
+    }
+
+    #[test]
     fn replace_reuses_unchanged_objects() {
         let store = LibraryStore::new();
         store.replace_tracks(library());
@@ -465,6 +531,7 @@ mod tests {
             name: name.to_owned(),
             created: 0,
             modified: 0,
+            image: None,
             entries: (0..entries)
                 .map(|i| PlaylistEntry {
                     item: PlaylistItemId(i as i64),
