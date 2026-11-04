@@ -1603,6 +1603,7 @@ dependencies = [
  "notify",
  "rayon",
  "rusqlite",
+ "same-file",
  "tempfile",
  "thiserror 2.0.21",
  "walkdir",

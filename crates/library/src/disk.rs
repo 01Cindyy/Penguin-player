@@ -253,8 +253,9 @@ mod tests {
 
     #[test]
     fn times_keep_their_nanoseconds() {
-        let time = UNIX_EPOCH + Duration::new(1_700_000_000, 123_456_789);
-        assert_eq!(unix_time(Ok(time)), (1_700_000_000, 123_456_789));
+        // Windows keeps times in steps of 100 nanoseconds.
+        let time = UNIX_EPOCH + Duration::new(1_700_000_000, 123_456_700);
+        assert_eq!(unix_time(Ok(time)), (1_700_000_000, 123_456_700));
         let before = UNIX_EPOCH - Duration::new(5, 0);
         assert_eq!(unix_time(Ok(before)), (-5, 0));
         assert_eq!(unix_time(Err(io::ErrorKind::Unsupported.into())), (0, 0));

@@ -14,6 +14,7 @@ use notify::event::{
     AccessKind, AccessMode, CreateKind, EventKind, ModifyKind, RemoveKind, RenameMode,
 };
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher, WatcherKind};
+use same_file::Handle;
 use walkdir::WalkDir;
 
 use crate::covers::is_folder_image;
@@ -29,6 +30,9 @@ const DEBOUNCE: Duration = Duration::from_millis(1500);
 /// A batch is reported this long after its first change even if changes keep coming,
 /// so a file being written for minutes (a download, say) doesn't hold back the rest.
 const MAX_BATCH_DELAY: Duration = Duration::from_secs(10);
+
+/// How often a [`RootCheck`] looks at the music folder.
+const ROOT_CHECK_INTERVAL: Duration = Duration::from_secs(2);
 
 /// Watches the music folder and everything in it. Dropping it stops watching.
 pub struct LibraryWatcher {
@@ -72,11 +76,17 @@ impl LibraryWatcher {
         )
         .map_err(watch_error)?;
         watch_folders(&mut watcher, &root).map_err(watch_error)?;
+        let root_check = if reports_root_going() {
+            None
+        } else {
+            RootCheck::new(&root)
+        };
 
         let stopped = Arc::new(AtomicBool::new(false));
         let batcher = Batcher {
             watcher,
             root: WatchedRoot::new(root),
+            root_check,
             stopped: stopped.clone(),
             on_change: Box::new(on_change),
             pending: Vec::new(),
@@ -116,6 +126,13 @@ fn watch_error(error: notify::Error) -> LibraryError {
 /// backends watch a whole tree with one native watch.
 fn watches_each_folder() -> bool {
     RecommendedWatcher::kind() == WatcherKind::Inotify
+}
+
+/// Whether notify says when the watched folder itself goes away. On Windows it doesn't:
+/// it drops the watch of a deleted folder without an event, and a moved folder takes its
+/// watch along.
+fn reports_root_going() -> bool {
+    RecommendedWatcher::kind() != WatcherKind::ReadDirectoryChangesWatcher
 }
 
 /// Watches `dir` and the folders below it that scans look into. Fails only if `dir`
@@ -161,6 +178,8 @@ fn visible_folders(dir: &Path) -> impl Iterator<Item = PathBuf> {
 struct Batcher {
     watcher: RecommendedWatcher,
     root: WatchedRoot,
+    /// Until the folder has gone, where notify wouldn't say so.
+    root_check: Option<RootCheck>,
     stopped: Arc<AtomicBool>,
     on_change: Box<dyn Fn(Vec<PathBuf>) + Send>,
     /// The events of the batch being collected, each once.
@@ -171,10 +190,11 @@ struct Batcher {
 
 impl Batcher {
     /// Runs until the [`LibraryWatcher`] is dropped. Sleeps until the first change of a
-    /// batch arrives, so an idle watcher costs nothing.
+    /// batch arrives, so an idle watcher costs nothing beyond any [`RootCheck`].
     fn run(mut self, messages: &Receiver<Message>) {
         loop {
             let message = match self.first_change {
+                None if self.root_check.is_some() => messages.recv_timeout(ROOT_CHECK_INTERVAL),
                 None => messages.recv().map_err(|_| RecvTimeoutError::Disconnected),
                 Some(first) if first.elapsed() >= MAX_BATCH_DELAY => {
                     self.report();
@@ -187,7 +207,10 @@ impl Batcher {
                 Ok(Message::Event(Err(error))) => {
                     log::warn!("Error watching {}: {error}", self.root.path.display());
                 }
-                Err(RecvTimeoutError::Timeout) => self.report(),
+                Err(RecvTimeoutError::Timeout) => {
+                    self.report();
+                    self.check_root();
+                }
                 Ok(Message::Stop) | Err(RecvTimeoutError::Disconnected) => break,
             }
         }
@@ -223,6 +246,19 @@ impl Batcher {
         };
         if let Err(error) = watch_folders(&mut self.watcher, folder) {
             log::warn!("Not watching {} for changes: {error}", folder.display());
+        }
+    }
+
+    /// Treats the folder having gone as the event notify didn't send.
+    fn check_root(&mut self) {
+        let gone = self
+            .root_check
+            .as_ref()
+            .is_some_and(|check| check.went_away(&self.root.path));
+        if gone {
+            self.root_check = None;
+            let event = Event::new(EventKind::Remove(RemoveKind::Any));
+            self.add(event.add_path(self.root.path.clone()));
         }
     }
 
@@ -272,6 +308,36 @@ impl WatchedRoot {
             Some(self.path.clone())
         } else {
             Some(self.path.join(relative))
+        }
+    }
+}
+
+/// Looks at the music folder itself, for where notify doesn't say when it goes away.
+struct RootCheck {
+    /// The folder as it was when watching started, kept open so that its identity stays
+    /// valid. `None` on file systems that don't give a folder the same identity each
+    /// time, where only its existence can be checked.
+    original: Option<Handle>,
+}
+
+impl RootCheck {
+    /// `None` if the folder can't be opened, which would look like it having gone.
+    fn new(root: &Path) -> Option<Self> {
+        let original = Handle::from_path(root).ok()?;
+        let stable = Handle::from_path(root).is_ok_and(|again| again == original);
+        Some(Self {
+            original: stable.then_some(original),
+        })
+    }
+
+    /// Whether `root` no longer exists, or is now a different folder.
+    fn went_away(&self, root: &Path) -> bool {
+        match Handle::from_path(root) {
+            Ok(now) => self
+                .original
+                .as_ref()
+                .is_some_and(|original| now != *original),
+            Err(_) => true,
         }
     }
 }
@@ -370,6 +436,65 @@ mod tests {
         paths.iter().fold(Event::new(kind), |event, path| {
             event.add_path(path.to_path_buf())
         })
+    }
+
+    #[test]
+    fn root_check_notices_the_folder_going_or_being_replaced() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("music");
+        assert!(RootCheck::new(&root).is_none());
+        fs::create_dir(&root).unwrap();
+        let check = RootCheck::new(&root).unwrap();
+        assert!(!check.went_away(&root));
+
+        fs::rename(&root, dir.path().join("old music")).unwrap();
+        assert!(check.went_away(&root));
+        fs::create_dir(&root).unwrap();
+        assert!(check.went_away(&root));
+    }
+
+    #[test]
+    fn root_check_without_an_identity_only_looks_for_the_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let check = RootCheck { original: None };
+        assert!(!check.went_away(dir.path()));
+        assert!(check.went_away(&dir.path().join("missing")));
+    }
+
+    /// What happens on Windows, tried on every system: notify says nothing at all.
+    #[test]
+    fn a_folder_gone_without_an_event_is_reported() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("music");
+        fs::create_dir(&root).unwrap();
+        let (messages, received) = mpsc::channel();
+        let (sender, reported) = mpsc::channel();
+        let stopped = Arc::new(AtomicBool::new(false));
+        let batcher = Batcher {
+            watcher: RecommendedWatcher::new(
+                |_: notify::Result<Event>| {},
+                notify::Config::default(),
+            )
+            .unwrap(),
+            root: WatchedRoot::new(root.clone()),
+            root_check: RootCheck::new(&root),
+            stopped: stopped.clone(),
+            on_change: Box::new(move |paths| {
+                let _ = sender.send(paths);
+            }),
+            pending: Vec::new(),
+            seen: HashSet::new(),
+            first_change: None,
+        };
+        let thread = thread::spawn(move || batcher.run(&received));
+
+        fs::remove_dir(&root).unwrap();
+        let paths = reported.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(paths, [root]);
+        assert!(stopped.load(Ordering::Relaxed));
+
+        messages.send(Message::Stop).unwrap();
+        thread.join().unwrap();
     }
 
     #[test]

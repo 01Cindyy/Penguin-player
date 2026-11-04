@@ -115,6 +115,7 @@ fn blur_area(window: &gtk::Window, radius: u32) -> BlurArea {
 
 /// The area as rectangles: full-width rows in the middle and, near the top and bottom,
 /// one-pixel rows inset to follow the rounded corners.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn region_rects(area: BlurArea) -> Vec<(i32, i32, i32, i32)> {
     let BlurArea {
         x,

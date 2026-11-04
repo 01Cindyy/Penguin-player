@@ -168,10 +168,10 @@ mod tests {
 
     #[test]
     fn children_range_covers_only_children() {
-        let dir = Path::new("/music/Album");
-        let (start, end) = children_range(dir);
+        let dir = normalize(Path::new("/music/Album"));
+        let (start, end) = children_range(&dir);
         let inside = |path: &str| {
-            let bytes = to_bytes(Path::new(path));
+            let bytes = to_bytes(&normalize(Path::new(path)));
             bytes >= start && bytes < end
         };
         assert!(inside("/music/Album/01.flac"));
