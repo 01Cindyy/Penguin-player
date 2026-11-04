@@ -141,8 +141,8 @@ done
 
 case $(uname -s) in
 MINGW* | MSYS* | CYGWIN*)
-    fail "this installs on Linux; on Windows, use the .zip download (see the README)," \
-        "or make one with packaging/windows/make-bundle.sh"
+    fail "this installs on Linux; on Windows, use the installer (see the README)," \
+        "or make one with packaging/windows/make-installer.sh"
     ;;
 esac
 if [ "$action" = build ] && [ "$build" = no ]; then

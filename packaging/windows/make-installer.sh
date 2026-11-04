@@ -1,11 +1,12 @@
 #!/bin/sh
-# Makes the Windows download: a folder with penguin-player.exe and everything it needs
-# from MSYS2 (GTK, libadwaita and the libraries, data and licences that come with
-# them), zipped as dist/penguin-player-<version>-windows-x86_64.zip.
+# Makes the Windows installer: gathers penguin-player.exe and everything it needs from
+# MSYS2 (GTK, libadwaita and the libraries, data and licences that come with them) in a
+# folder, and makes dist/penguin-player-<version>-windows-x86_64-setup.exe from it with
+# Inno Setup (see penguin-player.iss).
 #
-# Run it in MSYS2's UCRT64 shell, with the packages from packaging/README.md:
+# Run it in MSYS2's UCRT64 shell, with what packaging/README.md says to install:
 #
-#     packaging/windows/make-bundle.sh
+#     packaging/windows/make-installer.sh
 #
 # The folder works from anywhere: GTK finds its files relative to the bin folder its
 # DLLs are in.
@@ -22,15 +23,32 @@ say() {
 }
 
 fail() {
-    printf 'make-bundle.sh: %s\n' "$*" >&2
+    printf 'make-installer.sh: %s\n' "$*" >&2
     exit 1
+}
+
+# Inno Setup isn't part of MSYS2. It's in a folder named after its version, in Program
+# Files or, if installed just for this user, in the user's programs. ISCC overrides this.
+find_iscc() {
+    programs=$(cygpath -u "${LOCALAPPDATA:-C:/}")/Programs
+    for candidate in "${ISCC:-}" \
+        "/c/Program Files/Inno Setup "*/ISCC.exe \
+        "/c/Program Files (x86)/Inno Setup "*/ISCC.exe \
+        "$programs/Inno Setup "*/ISCC.exe; do
+        if [ -f "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
 }
 
 [ $# -eq 0 ] || fail "takes no arguments; it builds the version in Cargo.toml"
 [ "${MSYSTEM:-}" = UCRT64 ] || fail "run it in MSYS2's UCRT64 shell"
-for tool in cargo ldd pacman pkg-config zip; do
+for tool in cargo cygpath ldd pacman pkg-config; do
     command -v "$tool" >/dev/null 2>&1 || fail "$tool is missing (see packaging/README.md)"
 done
+iscc=$(find_iscc) || fail "Inno Setup is missing (see packaging/README.md)"
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd -P)
 version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$root/Cargo.toml" | head -n 1)
@@ -44,7 +62,7 @@ say "== Program"
 (cd -- "$root" && cargo build --release --locked -p "$PROGRAM")
 
 say "== Bundle"
-rm -rf -- "$bundle" "$dist/$name.zip"
+rm -rf -- "$bundle" "$dist/$name-setup.exe"
 mkdir -p "$bundle/bin" "$bundle/share/glib-2.0/schemas" "$bundle/share/licenses/$PROGRAM" "$dist"
 cp -- "$target/release/$PROGRAM.exe" "$bundle/bin/"
 cp -- "$root/LICENSE" "$root/THIRD-PARTY-LICENSES.txt" "$bundle/share/licenses/$PROGRAM/"
@@ -99,6 +117,11 @@ done
     pacman -Q $packages | sed 's/^/    /'
 } >"$bundle/share/licenses/LIBRARIES.txt"
 
-say "== Zip"
-(cd -- "$target/windows" && zip -qr9 "$dist/$name.zip" "$name")
-say "Made $dist/$name.zip"
+say "== Installer"
+# MSYS2 would take these options for paths and rewrite them, as they start with a slash.
+MSYS2_ARG_CONV_EXCL='*' "$iscc" /Q \
+    "/DAppVersion=$version" \
+    "/DBundle=$(cygpath -w "$bundle")" \
+    "/O$(cygpath -w "$dist")" \
+    "$(cygpath -w "$root/packaging/windows/penguin-player.iss")"
+say "Made $dist/$name-setup.exe"

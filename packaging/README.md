@@ -20,7 +20,7 @@ builds the version in `Cargo.toml` into `dist/`:
 | `THIRD-PARTY-LICENSES.txt`, `SHA256SUMS` | The licences of what the program is built with, and the files' checksums |
 
 It also refreshes `THIRD-PARTY-LICENSES.txt` in the source folder, which `install.sh`,
-the AUR package and the Windows download install. It covers the crates of Linux and
+the AUR package and the Windows installer install. It covers the crates of Linux and
 Windows builds alike.
 
 Everything is built in a rootless Podman container with Debian 13 (`Containerfile`):
@@ -55,10 +55,19 @@ the notice.
 1. Set the version in `Cargo.toml` (`[workspace.package]`) and run `cargo update -w`.
 2. Add a `<release>` with the version and date at the top of the releases in
    `crates/app/data/io.github._01cindyy.Penguin_player.metainfo.xml`.
-3. Run `packaging/build.sh`, and commit `THIRD-PARTY-LICENSES.txt` if it changed.
-4. Tag the commit `v<version>`, push it, and make a GitHub release from the tag with
+3. Run `packaging/build.sh`, and commit `THIRD-PARTY-LICENSES.txt` if it changed. It
+   clears the old packages from `dist/`, so run it before the next step.
+4. On Windows, run `packaging/windows/make-installer.sh` on that commit (see
+   [Windows](#windows-msys2) below). Copy the `.exe` into `dist/` here and, in `dist/`,
+   add it to the checksums:
+
+   ```sh
+   sha256sum -- *-setup.exe >>SHA256SUMS
+   ```
+
+5. Tag the commit `v<version>`, push it, and make a GitHub release from the tag with
    the files in `dist/`.
-5. Update the AUR package from `packaging/aur/`: set `pkgver` (and `pkgrel=1`), then
+6. Update the AUR package from `packaging/aur/`: set `pkgver` (and `pkgrel=1`), then
 
    ```sh
    updpkgsums
@@ -67,8 +76,6 @@ the notice.
    ```
 
    and copy `PKGBUILD` and `.SRCINFO` into the AUR repository.
-6. On Windows, run `packaging/windows/make-bundle.sh` and add the `.zip` from `dist/`
-   to the release (see [Windows](#windows-msys2) below).
 
 ## Windows (MSYS2)
 
@@ -82,7 +89,14 @@ UCRT64 environment, which has GTK, libadwaita, Rust and the compilers.
 3. Install what the build needs:
 
    ```sh
-   pacman -S --needed git make zip mingw-w64-ucrt-x86_64-{gcc,pkgconf,cmake,rust,gtk4,libadwaita}
+   pacman -S --needed git make mingw-w64-ucrt-x86_64-{gcc,pkgconf,cmake,rust,gtk4,libadwaita}
+   ```
+
+4. To make the installer, also install [Inno Setup](https://jrsoftware.org/isinfo.php) 7.
+   It isn't part of MSYS2, so run this in PowerShell:
+
+   ```powershell
+   winget install --id JRSoftware.InnoSetup.7 -e -s winget -i
    ```
 
 ### Trying it
@@ -102,16 +116,26 @@ The app keeps its settings in `%APPDATA%\_01cindyy\penguin-player\config`, its l
 `%APPDATA%\_01cindyy\penguin-player\data`, and covers and lyrics in
 `%LOCALAPPDATA%\_01cindyy\penguin-player\cache`.
 
-### The download
+### The installer
 
 ```sh
-packaging/windows/make-bundle.sh
+packaging/windows/make-installer.sh
 ```
 
-builds the program and makes `dist/penguin-player-<version>-windows-x86_64.zip`: a
-folder with `bin\penguin-player.exe`, the DLLs it loads from MSYS2, GTK's image loaders
-and settings schemas, and in `share\licenses` the licences of the app, its crates and
-the MSYS2 packages, with where to get their source code (`LIBRARIES.txt`). It runs
-from wherever it's unzipped. `build.rs` gives the program its icon
+builds the program and makes `dist/penguin-player-<version>-windows-x86_64-setup.exe`
+with Inno Setup (`packaging/windows/penguin-player.iss`). What it installs is first
+gathered in `target/windows/`: `bin\penguin-player.exe`, the DLLs it loads from MSYS2,
+GTK's image loaders and settings schemas, and in `share\licenses` the licences of the
+app, its crates and the MSYS2 packages, with where to get their source code
+(`LIBRARIES.txt`). That folder runs from wherever it is, without installing it.
+
+The installer asks whether to install for the current user, which needs no administrator
+rights, or for everyone. It adds a Start menu shortcut and, if asked, a desktop one, and
+lists the app under **Open with** and in Default Apps for the audio formats it plays.
+`.mp4` and `.webm` are left out, as those files are usually video. Uninstalling leaves
+the app's settings and library in place. It isn't signed, so Windows warns about it
+before it runs (see the main README).
+
+`build.rs` gives the program its icon
 (`crates/app/data/windows/penguin-player.ico`) and its name, through MSYS2's `windres`.
 

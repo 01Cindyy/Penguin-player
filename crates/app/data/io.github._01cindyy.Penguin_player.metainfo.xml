@@ -48,6 +48,21 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.1.0" date="2026-11-04">
+      <description>
+        <p>Windows support, a waveform seek bar and a more polished look throughout.</p>
+        <ul>
+          <li>Now also on Windows, with an installer</li>
+          <li>Open With: play songs from your file manager, whether or not they're in your library</li>
+          <li>Waveform Seek Bar: use a song's waveform as the seek bar, switched on in Appearance</li>
+          <li>Playlists show their songs' covers, or an image of your own</li>
+          <li>Bigger cards, counts on the filter chips and a more consistent look</li>
+          <li>Online Lyrics also searches by title and album, so the album is now sent to LRCLIB too</li>
+          <li>The volume slider changes more evenly across its range</li>
+          <li>Your library is upgraded when you first start this version, and 1.0.0 can't open it after that</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-15">
       <description>
         <p>The first release.</p>

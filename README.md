@@ -4,7 +4,7 @@
 
 # Penguin Player
 
-**A clean, fast and beautiful offline music player, built for Linux.**
+**A clean, fast and beautiful offline music player, built for Linux and Windows.**
 
 A native music player written in Rust, for playing your music files offline. It's for anyone who wants an aesthetically pleasing but functional music player.
 
@@ -37,7 +37,8 @@ A native music player written in Rust, for playing your music files offline. It'
 - **Plugins** in Lua, sandboxed. Two come with the app: Online Lyrics, which finds lyrics
   on [LRCLIB](https://lrclib.net), and Discord Status, which shows what you're playing on
   your Discord profile.
-- **Desktop integration on Linux**: media keys and the desktop's media controls (MPRIS).
+- **Desktop integration**: media keys and the desktop's media controls (MPRIS on Linux,
+  the media overlay on Windows).
 - **Adaptive layout**, from wide windows down to phone-sized ones.
 
 ## Screenshots
@@ -54,11 +55,13 @@ A native music player written in Rust, for playing your music files offline. It'
 
 ## Installing
 
-Penguin Player needs **GTK 4.18** and **libadwaita 1.7** or newer, which come with
+On Linux, Penguin Player needs **GTK 4.18** and **libadwaita 1.7** or newer, which come with
 Debian 13, Ubuntu 25.04, Fedora 42, Arch Linux and anything newer. Downloads are on
 the [releases page](https://github.com/01Cindyy/Penguin-player/releases/latest).
 
 ### Arch Linux (AUR)
+
+Coming soon as AUR signups are currently closed. Please install manually for now.
 
 ```sh
 yay -S penguin-player      # or paru, or any AUR helper
@@ -77,7 +80,7 @@ makepkg -si
 Download the `.deb`, then:
 
 ```sh
-sudo apt install ./penguin-player_1.0.0-1_amd64.deb
+sudo apt install ./penguin-player_1.1.0-1_amd64.deb
 ```
 
 ### Fedora
@@ -85,7 +88,7 @@ sudo apt install ./penguin-player_1.0.0-1_amd64.deb
 Download the `.rpm`, then:
 
 ```sh
-sudo dnf install ./penguin-player-1.0.0-1.x86_64.rpm
+sudo dnf install ./penguin-player-1.1.0-1.x86_64.rpm
 ```
 
 ### AppImage (any distribution)
@@ -93,8 +96,8 @@ sudo dnf install ./penguin-player-1.0.0-1.x86_64.rpm
 Download the `.AppImage`, make it executable and run it:
 
 ```sh
-chmod +x penguin-player-1.0.0-x86_64.AppImage
-./penguin-player-1.0.0-x86_64.AppImage
+chmod +x penguin-player-1.1.0-x86_64.AppImage
+./penguin-player-1.1.0-x86_64.AppImage
 ```
 
 The AppImage uses your system's GTK and libadwaita, so it needs the versions above.
@@ -110,12 +113,28 @@ The `.tar.gz` holds the program and an installer. Extract it, then run, as yours
 
 `./install.sh --uninstall` (with `--user` if you used it) removes it again.
 
+### Windows
+
+Download `penguin-player-1.1.0-windows-x86_64-setup.exe` and run it. It needs 64-bit
+Windows 10 or 11. You can install it for your user or for everyone on the pc in program files, 
+and afterwards it's listed under **Open with** for your music files.
+
+The installer isn't signed, so Windows may say "Windows protected your PC". To carry on,
+choose **More info**, then **Run anyway**.
+
 ### Checking your download
 
 Each release has a `SHA256SUMS` file. With it in the same folder as your download:
 
 ```sh
 sha256sum -c SHA256SUMS --ignore-missing
+```
+
+On Windows, run this in PowerShell and compare the result with the file's line in
+`SHA256SUMS`:
+
+```powershell
+Get-FileHash penguin-player-1.1.0-windows-x86_64-setup.exe
 ```
 
 ## Getting started
@@ -125,8 +144,10 @@ background, so you can start listening straight away.
 
 Your settings are in `~/.config/penguin-player/`, your library in
 `~/.local/share/penguin-player/`, and cached covers and lyrics in
-`~/.cache/penguin-player/`. Uninstalling the app leaves these in place, so for now
-delete them yourself if you want them gone.
+`~/.cache/penguin-player/`. On Windows, settings and library are in
+`%APPDATA%\_01cindyy\penguin-player\`, and the cache in
+`%LOCALAPPDATA%\_01cindyy\penguin-player\cache\`. Uninstalling the app leaves these in
+place, so for now delete them yourself if you want them gone.
 
 ### Keyboard shortcuts
 
@@ -160,7 +181,8 @@ Discord Status, what you're playing goes to the Discord app on your computer.
 ## Building from source
 
 You need Rust 1.92 or newer, GTK 4.18 and libadwaita 1.7 with their development
-files, ALSA and D-Bus development files, a C compiler, CMake and pkg-config.
+files, ALSA and D-Bus development files, a C compiler, CMake and pkg-config. On Windows,
+[packaging/README.md](packaging/README.md#windows-msys2) has the steps instead.
 
 ```sh
 # Arch Linux
