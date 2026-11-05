@@ -141,11 +141,18 @@ impl SeekBar {
     }
 
     /// Puts the times right at the row's ends, for a layout that lines the row up with
-    /// something else.
+    /// something else, and gives the slider the room they don't need. They stay equally
+    /// wide, and as wide as the track's length, so the slider holds still as time passes.
     pub fn pin_times_to_ends(&self) {
         let parts = self.parts();
         parts.elapsed.set_xalign(0.0);
         parts.duration.set_xalign(1.0);
+        self.set_column_spacing(4);
+        let times = gtk::SizeGroup::new(gtk::SizeGroupMode::Horizontal);
+        for time in [&parts.elapsed, &parts.duration] {
+            time.set_width_chars(4);
+            times.add_widget(time);
+        }
     }
 
     fn ctx(&self) -> &Rc<AppContext> {

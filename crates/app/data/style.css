@@ -694,6 +694,10 @@ scale.mp-volume.mp-muted > trough > highlight {
   margin-top: 18px;
 }
 
+.mp-now-playing-page .mp-time-label {
+  min-width: 0;
+}
+
 .mp-now-playing-page .mp-transport {
   margin-top: 6px;
 }
@@ -719,7 +723,8 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 /* Lyrics: timed lines are dim, more so once sung, and the one being sung stands out and
- * grows; plain ones are smaller. */
+ * grows; plain ones are smaller. Timed lines are all laid out at the size of the one
+ * being sung and drawn smaller, so growing never moves or rewraps anything. */
 
 .mp-lyrics list {
   background: none;
@@ -740,13 +745,19 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 .mp-lyrics-line {
-  font-size: 1.6em;
+  font-size: 2em;
   font-weight: 800;
-  transition: font-size 300ms ease-out;
 }
 
 .mp-lyrics list.mp-lyrics-synced row {
+  padding-top: 2px;
+  padding-bottom: 2px;
   opacity: 0.58;
+}
+
+.mp-lyrics list.mp-lyrics-synced .mp-lyrics-line {
+  transform: scale(0.8);
+  transition: transform 300ms ease-out;
 }
 
 .mp-lyrics list.mp-lyrics-synced row.mp-lyrics-sung {
@@ -758,7 +769,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 .mp-lyrics list.mp-lyrics-synced row.mp-lyrics-current .mp-lyrics-line {
-  font-size: 2em;
+  transform: scale(1);
 }
 
 .mp-lyrics list:not(.mp-lyrics-synced) .mp-lyrics-line {

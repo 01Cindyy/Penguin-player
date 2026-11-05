@@ -1,7 +1,7 @@
 //! The playing song's lyrics. Timed lyrics follow the song: the line being sung
-//! stands out (`mp-lyrics-current`) and is kept in view, lines already sung are dimmer
-//! (`mp-lyrics-sung`), and clicking a line jumps there. Scrolling the lyrics by hand
-//! stops them following for a few seconds.
+//! stands out (`mp-lyrics-current`) and is kept in the middle of the view, lines already
+//! sung are dimmer (`mp-lyrics-sung`), and clicking a line jumps there. Scrolling the
+//! lyrics by hand stops them following for a few seconds.
 //!
 //! GTK shows a scrollbar whenever anything scrolls, so `mp-lyrics-scrollbar-hidden` hides
 //! it again after automatic scrolling, until the pointer moves or the user scrolls.
@@ -22,14 +22,11 @@ use crate::ui::{disconnect_on_destroy, follow, icons, set_css_class};
 const SCROLL_MS: u32 = 500;
 /// How long after the user scrolls the lyrics they follow the song again.
 const FOLLOW_AGAIN_AFTER: Duration = Duration::from_secs(4);
-/// How far down the view the line being sung is kept, as a fraction of its height.
-const CURRENT_LINE_AT: f64 = 0.48;
 /// Lines change on time even between the player's position reports, which come
 /// about this often.
 const POSITION_REPORTS: Duration = Duration::from_millis(250);
-/// Height of the faded top and bottom edges, as fractions of the view's height.
-const FADE_TOP: f32 = 0.18;
-const FADE_BOTTOM: f32 = 0.22;
+/// Height of the faded top and bottom edges, as a fraction of the view's height.
+const FADE: f32 = 0.2;
 const HIDDEN_SCROLLBAR: &str = "mp-lyrics-scrollbar-hidden";
 const PAUSE_TEXT: &str = "♪";
 const NO_LYRICS: &str = "Lyrics show here when the song has them in its tags, or in an \
@@ -60,8 +57,8 @@ mod imp {
         pub(super) next_line: RefCell<Option<glib::SourceId>>,
         /// Set while the user's scrolling has stopped the lyrics following the song.
         pub(super) follow_again: RefCell<Option<glib::SourceId>>,
-        /// A scroll to the line being sung that has to wait for the lines' layout.
-        pub(super) scroll_pending: Cell<bool>,
+        /// Whether the next frame will fit the lines to the view's size.
+        pub(super) fitting: Cell<bool>,
         pub(super) scroll: OnceCell<adw::TimedAnimation>,
     }
 
@@ -99,8 +96,8 @@ mod imp {
             let adjustment = parts.scrolled.vadjustment();
             let above = adjustment.value() as f32;
             let below = (adjustment.upper() - adjustment.page_size()) as f32 - above;
-            let top = above.clamp(0.0, FADE_TOP * height);
-            let bottom = below.clamp(0.0, FADE_BOTTOM * height);
+            let top = above.clamp(0.0, FADE * height);
+            let bottom = below.clamp(0.0, FADE * height);
             if parts.stack.visible_child_name().as_deref() != Some("lines")
                 || height <= 0.0
                 || top + bottom <= 0.0
@@ -224,8 +221,10 @@ impl LyricsView {
             .stack
             .set_visible_child_name(if lyrics.is_some() { "lines" } else { "missing" });
         self.imp().lyrics.replace(lyrics);
+        self.update_insets();
         self.resume_following();
         self.update_line();
+        self.scroll_to_current(false);
     }
 
     /// Shows nothing, such as while the lyrics load.
@@ -270,13 +269,11 @@ impl LyricsView {
                 view.jump_to(row.index());
             }
         });
-        // Rows are measured only once laid out, which can be after they should scroll.
+        // The view changed size, or the lines did.
         let view = self.downgrade();
         parts.scrolled.vadjustment().connect_changed(move |_| {
-            if let Some(view) = view.upgrade()
-                && view.imp().scroll_pending.get()
-            {
-                view.scroll_to_current(false);
+            if let Some(view) = view.upgrade() {
+                view.fit_next_frame();
             }
         });
         let view = self.downgrade();
@@ -449,17 +446,56 @@ impl LyricsView {
         }
     }
 
-    /// Scrolls so the line being sung sits [`CURRENT_LINE_AT`] down the view, or to
-    /// the top before the first line.
+    fn is_synced(&self) -> bool {
+        let lyrics = self.imp().lyrics.borrow();
+        lyrics.as_ref().is_some_and(|lyrics| lyrics.is_synced())
+    }
+
+    /// Fits the lines to the view's size and centres the line being sung again, at the
+    /// start of the next frame: sizes mustn't change in the middle of size allocation.
+    fn fit_next_frame(&self) {
+        if self.imp().fitting.replace(true) {
+            return;
+        }
+        self.add_tick_callback(|view, _| {
+            view.imp().fitting.set(false);
+            // If this changes the insets, the lines move once they are laid out, which
+            // brings us back here.
+            if !view.update_insets() && view.is_following() {
+                view.scroll_to_current(false);
+            }
+            glib::ControlFlow::Break
+        });
+    }
+
+    /// Leaves half a view of room above and below timed lyrics, so their first and last
+    /// lines can reach the middle too. Returns whether that changed anything.
+    fn update_insets(&self) -> bool {
+        let list = &self.parts().list;
+        let inset = if self.is_synced() {
+            self.height() / 2
+        } else {
+            0
+        };
+        let changed = list.margin_top() != inset;
+        list.set_margin_top(inset);
+        list.set_margin_bottom(inset);
+        changed
+    }
+
+    /// Scrolls so the line being sung, or the first until then, sits in the middle of
+    /// the view. Plain lyrics stay where the reader left them.
     fn scroll_to_current(&self, animate: bool) {
+        if !self.is_synced() {
+            return;
+        }
         let imp = self.imp();
         let parts = self.parts();
         parts.scrolled.add_css_class(HIDDEN_SCROLLBAR);
         let adjustment = parts.scrolled.vadjustment();
-        let current = imp
-            .current
-            .get()
-            .and_then(|index| parts.list.row_at_index(i32::try_from(index).ok()?));
+        let current = i32::try_from(imp.current.get().unwrap_or(0))
+            .ok()
+            .and_then(|index| parts.list.row_at_index(index));
         let target = match current {
             Some(row) => {
                 let Some(bounds) = parts
@@ -468,15 +504,15 @@ impl LyricsView {
                     .and_then(|viewport| row.compute_bounds(&viewport))
                     .filter(|bounds| bounds.height() > 0.0)
                 else {
-                    imp.scroll_pending.set(true);
+                    // Rows are measured only once laid out.
+                    self.fit_next_frame();
                     return;
                 };
                 adjustment.value() + f64::from(bounds.y() + bounds.height() / 2.0)
-                    - adjustment.page_size() * CURRENT_LINE_AT
+                    - adjustment.page_size() / 2.0
             }
             None => 0.0,
         };
-        imp.scroll_pending.set(false);
         let target = target.clamp(
             adjustment.lower(),
             (adjustment.upper() - adjustment.page_size()).max(adjustment.lower()),

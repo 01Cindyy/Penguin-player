@@ -59,6 +59,9 @@ mod imp {
         pub(super) toolbar: adw::ToolbarView,
         pub(super) stack: gtk::Stack,
         pub(super) queue_split: adw::OverlaySplitView,
+        /// Whether narrowing the window is what hid the queue, so widening it brings the
+        /// queue back.
+        pub(super) queue_hidden_by_narrowing: Cell<bool>,
         pub(super) nav_split: adw::NavigationSplitView,
         pub(super) search_entry: gtk::SearchEntry,
         pub(super) back_button: gtk::Button,
@@ -228,7 +231,18 @@ impl MainWindow {
         imp.queue_split.set_sidebar(Some(&queue));
         imp.queue_split.set_content(Some(&imp.nav_split));
         imp.queue_split.set_show_sidebar(false);
+        imp.queue_split.set_pin_sidebar(true);
         imp.queue_split.set_sidebar_width_unit(adw::LengthUnit::Px);
+        imp.queue_split.connect_show_sidebar_notify(glib::clone!(
+            #[weak(rename_to = window)]
+            self,
+            move |_| window.imp().queue_hidden_by_narrowing.set(false)
+        ));
+        imp.queue_split.connect_collapsed_notify(glib::clone!(
+            #[weak(rename_to = window)]
+            self,
+            move |_| window.fit_queue_to_width()
+        ));
         for property in ["show-sidebar", "collapsed"] {
             imp.queue_split.connect_notify_local(
                 Some(property),
@@ -521,6 +535,20 @@ impl MainWindow {
         };
         imp.nav_split.set_min_sidebar_width(width);
         imp.nav_split.set_max_sidebar_width(width);
+    }
+
+    /// Narrowing the window hides a queue that sat beside the page, and widening it brings
+    /// that queue back. Otherwise the queue stays as the user left it.
+    fn fit_queue_to_width(&self) {
+        let imp = self.imp();
+        let split = &imp.queue_split;
+        if split.is_collapsed() {
+            let was_open = split.shows_sidebar();
+            split.set_show_sidebar(false);
+            imp.queue_hidden_by_narrowing.set(was_open);
+        } else if imp.queue_hidden_by_narrowing.replace(false) {
+            split.set_show_sidebar(true);
+        }
     }
 
     /// The queue casts its shade on the page while it sits beside it, not while it

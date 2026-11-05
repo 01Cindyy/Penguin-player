@@ -134,11 +134,12 @@ page has its own controls) and the search field, lets the page reach up behind t
 header, and shows the sidebar as icons only; leaving restores the sidebar's own size.
 
 With lyrics on, Now Playing shows them in the right half of pages at least 860 sp wide
-(an `OverlaySplitView` whose sidebar is half the page) and in place of the art on
-narrower ones. Each place has its own `LyricsView`. The page reads the lyrics once per
-song on a blocking thread, the song's own with `mp_library::read_lyrics` and those
-plugins found before with `read_found_lyrics`, and hands both views the result; each
-view follows the player's position by itself. Plugins find lyrics
+(an `OverlaySplitView` whose sidebar is half the page). Narrower pages have no room for
+them, so they only show the art, grey out the Lyrics switch and load no lyrics. The page
+reads the lyrics once per song on a blocking thread, the song's own with
+`mp_library::read_lyrics` and those plugins found before with `read_found_lyrics`, and
+hands the `LyricsView` the result; the view follows the player's position by itself, and
+keeps the line being sung in its middle. Plugins find lyrics
 (`mp.lyrics.provide`) for songs without any, or also for songs whose own lyrics they
 may replace; `LyricsSearch` says which songs, all plugins together, and `OwnLyrics` what
 a song has. Lyrics found before replace the song's own while plugins would look it up,

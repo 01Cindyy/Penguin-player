@@ -3,8 +3,8 @@
 //! window hides the player bar and the search field and narrows the sidebar to its
 //! icons (see `MainWindow`).
 //!
-//! With lyrics on, wide pages show them in their right half, and narrow ones in place
-//! of the art.
+//! With lyrics on, wide pages show them in their right half. Narrow ones have no room
+//! for them, so they only show the art.
 
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
@@ -36,8 +36,9 @@ const COVER_SIZE: i32 = 480;
 /// The column's margins (`.mp-now-playing-column`) on both sides together.
 const COLUMN_MARGINS: i32 = 64;
 const VISUALIZER_HEIGHT: i32 = 56;
-/// Pages narrower than this (in sp) show lyrics in place of the art, not beside it.
+/// Pages narrower than this (in sp) have no room for lyrics.
 const LYRICS_BESIDE_MIN_WIDTH: f64 = 860.0;
+const NO_ROOM_FOR_LYRICS: &str = "Make the window wider to show lyrics";
 /// Plugins search for a song's lyrics once it has played this long, so skipping
 /// through songs doesn't search for each.
 const SEARCH_AFTER: Duration = Duration::from_secs(1);
@@ -63,8 +64,6 @@ pub fn build(ctx: &Rc<AppContext>) -> adw::NavigationPage {
 struct NowPlayingPage {
     ctx: Rc<AppContext>,
     backdrop: CoverBackdrop,
-    /// The art, or the lyrics in its place.
-    art: gtk::Stack,
     cover: CoverImage,
     title: gtk::Label,
     artist: gtk::Label,
@@ -78,9 +77,8 @@ struct NowPlayingPage {
     /// The controls, with the lyrics beside them on wide pages.
     split: adw::OverlaySplitView,
     lyrics_toggle: gtk::ToggleButton,
-    lyrics_beside: LyricsView,
-    lyrics_in_place: LyricsView,
-    /// Whether the page is wide enough for the lyrics beside the art.
+    lyrics: LyricsView,
+    /// Whether the page is wide enough for lyrics.
     wide: Cell<bool>,
     /// The song whose lyrics the views hold, or are loading.
     lyrics_for: RefCell<Option<PathBuf>>,
@@ -118,12 +116,6 @@ impl NowPlayingPage {
         Self {
             ctx: ctx.clone(),
             backdrop: CoverBackdrop::new(&ctx.covers),
-            art: gtk::Stack::builder()
-                .transition_type(gtk::StackTransitionType::Crossfade)
-                .transition_duration(250)
-                .hhomogeneous(false)
-                .vhomogeneous(false)
-                .build(),
             cover,
             title: ellipsized_label(&["mp-now-title", "title-2"]),
             artist: ellipsized_label(&["mp-now-artist"]),
@@ -156,8 +148,7 @@ impl NowPlayingPage {
                 .css_classes(["mp-now-playing-split"])
                 .build(),
             lyrics_toggle,
-            lyrics_beside: LyricsView::new(ctx),
-            lyrics_in_place: LyricsView::new(ctx),
+            lyrics: LyricsView::new(ctx),
             wide: Cell::new(true),
             lyrics_for: RefCell::default(),
             lyrics_load: Cell::new(0),
@@ -171,12 +162,10 @@ impl NowPlayingPage {
     /// lyrics beside it on wide pages.
     fn layout(self: &Rc<Self>) -> gtk::Widget {
         let ctx = &self.ctx;
-        self.art.add_named(&self.cover, Some("cover"));
-        self.art.add_named(&self.lyrics_in_place, Some("lyrics"));
         let art = gtk::AspectFrame::builder()
             .ratio(1.0)
             .obey_child(false)
-            .child(&self.art)
+            .child(&self.cover)
             .css_classes(["mp-now-art"])
             .build();
 
@@ -258,7 +247,7 @@ impl NowPlayingPage {
         column.append(&self.title);
         column.append(&self.byline);
         column.append(&quality);
-        column.append(&MatchWidth::new(&controls, &self.art));
+        column.append(&MatchWidth::new(&controls, &self.cover));
         // Wide enough for the art at its largest, so the controls can match it.
         let clamp = adw::Clamp::builder()
             .maximum_size(COVER_SIZE + COLUMN_MARGINS)
@@ -271,7 +260,7 @@ impl NowPlayingPage {
             .build();
         let beside = adw::Clamp::builder()
             .maximum_size(560)
-            .child(&self.lyrics_beside)
+            .child(&self.lyrics)
             .css_classes(["mp-now-playing-lyrics"])
             .build();
         self.split.set_content(Some(&scrolled));
@@ -300,6 +289,7 @@ impl NowPlayingPage {
             move |_: &adw::Breakpoint| {
                 if let Some(page) = page.upgrade() {
                     page.wide.set(wide);
+                    page.update_lyrics();
                     page.update_layout();
                 }
             }
@@ -437,19 +427,25 @@ impl NowPlayingPage {
             .set_visible(display.visualizer() && !display.waveform_seek_bar());
     }
 
-    /// Lyrics show while they are on and a song is playing: beside the art on wide
-    /// pages, in its place on narrow ones.
-    fn update_layout(&self) {
-        let shown = self.lyrics_toggle.is_active() && self.ctx.player.current_track().is_some();
-        let wide = self.wide.get();
-        self.split.set_show_sidebar(shown && wide);
-        self.art
-            .set_visible_child_name(if shown && !wide { "lyrics" } else { "cover" });
+    /// Whether lyrics are on and the page has room for them.
+    fn lyrics_wanted(&self) -> bool {
+        self.lyrics_toggle.is_active() && self.wide.get()
     }
 
-    /// Loads the playing song's lyrics while they are on, unless they are loaded.
+    /// Lyrics show beside the art while they are wanted and a song is playing. Narrow
+    /// pages keep the switch's setting for when they are wider again.
+    fn update_layout(&self) {
+        let wide = self.wide.get();
+        self.split
+            .set_show_sidebar(self.lyrics_wanted() && self.ctx.player.current_track().is_some());
+        self.lyrics_toggle.set_sensitive(wide);
+        self.lyrics_toggle
+            .set_tooltip_text((!wide).then_some(NO_ROOM_FOR_LYRICS));
+    }
+
+    /// Loads the playing song's lyrics while they are wanted, unless they are loaded.
     fn update_lyrics(self: &Rc<Self>) {
-        if !self.lyrics_toggle.is_active() {
+        if !self.lyrics_wanted() {
             return;
         }
         let track = self.playing();
@@ -458,14 +454,13 @@ impl NowPlayingPage {
             return;
         }
         self.lyrics_for.replace(path);
-        self.lyrics_beside.clear();
-        self.lyrics_in_place.clear();
+        self.lyrics.clear();
         self.load_lyrics(track);
     }
 
-    /// Loads the lyrics again, keeping what is shown until then, or once they are on.
+    /// Loads the lyrics again, keeping what is shown until then, or once they are wanted.
     fn reload_lyrics(self: &Rc<Self>) {
-        if self.lyrics_toggle.is_active() {
+        if self.lyrics_wanted() {
             self.load_lyrics(self.playing());
         } else {
             self.lyrics_for.replace(None);
@@ -509,8 +504,7 @@ impl NowPlayingPage {
             if has_own {
                 this.show_lyrics(own, false);
             } else {
-                this.lyrics_beside.show_searching();
-                this.lyrics_in_place.show_searching();
+                this.lyrics.show_searching();
             }
             let ctx = this.ctx.clone();
             drop(this);
@@ -560,9 +554,6 @@ impl NowPlayingPage {
     }
 
     fn show_lyrics(&self, lyrics: Option<Lyrics>, searched_online: bool) {
-        let lyrics = lyrics.map(Rc::new);
-        self.lyrics_beside
-            .set_lyrics(lyrics.clone(), searched_online);
-        self.lyrics_in_place.set_lyrics(lyrics, searched_online);
+        self.lyrics.set_lyrics(lyrics.map(Rc::new), searched_online);
     }
 }
