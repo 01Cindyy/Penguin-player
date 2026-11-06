@@ -14,7 +14,8 @@
 //! While the Now Playing page is shown, the window gives it as much room as it can:
 //! no player bar (the page has its own controls), no search field, the page reaching
 //! up behind the header, and the sidebar showing only icons until another page is
-//! chosen.
+//! chosen. An arrow at the page's top left hides the sidebar or shows all of it instead,
+//! which Now Playing keeps.
 
 use std::cell::{Cell, OnceCell};
 use std::rc::Rc;
@@ -22,7 +23,7 @@ use std::rc::Rc;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
-use mp_core::APP_NAME;
+use mp_core::{APP_NAME, NowPlayingSidebar};
 
 use crate::context::AppContext;
 use crate::player::{Player, PlayerState};
@@ -77,6 +78,12 @@ mod imp {
         pub(super) sidebar_icons_only: Cell<bool>,
         /// The Now Playing page is shown.
         pub(super) now_playing: Cell<bool>,
+        /// How much of the sidebar Now Playing shows, and the arrow that changes it.
+        pub(super) now_playing_sidebar: Cell<NowPlayingSidebar>,
+        pub(super) sidebar_button: gtk::Button,
+        /// Any window buttons the decoration layout puts at the start, which the sidebar's
+        /// header holds, shown in the page's header while Now Playing hides the sidebar.
+        pub(super) start_controls: OnceCell<gtk::WindowControls>,
         /// The content pane's header bar and the rest of it, and the search field in
         /// the header, which Now Playing changes.
         pub(super) content_view: OnceCell<adw::ToolbarView>,
@@ -357,7 +364,21 @@ impl MainWindow {
             .show_back_button(false)
             .css_classes(["flat", "mp-content-header"])
             .build();
+        imp.sidebar_button.connect_clicked(glib::clone!(
+            #[weak(rename_to = window)]
+            self,
+            move |_| window.cycle_now_playing_sidebar()
+        ));
+        let start_controls = gtk::WindowControls::new(gtk::PackType::Start);
+        start_controls.connect_empty_notify(glib::clone!(
+            #[weak(rename_to = window)]
+            self,
+            move |_| window.update_sidebar_width()
+        ));
+        header.pack_start(&start_controls);
         header.pack_start(&imp.back_button);
+        header.pack_start(&imp.sidebar_button);
+        assert!(imp.start_controls.set(start_controls).is_ok(), "built once");
 
         let view = adw::ToolbarView::new();
         view.add_top_bar(&header);
@@ -494,6 +515,7 @@ impl MainWindow {
         imp.sidebar_width
             .set(f64::from(state.sidebar_width).clamp(SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH));
         imp.sidebar_icons_only.set(state.sidebar_icons_only);
+        imp.now_playing_sidebar.set(state.now_playing_sidebar);
         self.update_sidebar_width();
         self.set_queue_width(f64::from(state.queue_width));
     }
@@ -511,22 +533,40 @@ impl MainWindow {
         self.update_sidebar_width();
     }
 
-    /// Gives the sidebar the size it was dragged to, or only its icons while Now
-    /// Playing is shown. In the narrow layout it is a page of its own, which shows
-    /// everything and isn't resized.
+    /// Gives the sidebar the size it was dragged to, or while Now Playing is shown, as
+    /// much of it as the page's arrow asks for. In the narrow layout it is a page of its
+    /// own, which shows everything and isn't resized.
     fn update_sidebar_width(&self) {
         let imp = self.imp();
         let (Some(sidebar), Some(handle)) = (imp.sidebar.get(), imp.sidebar_handle.get()) else {
             return;
         };
         let collapsed = imp.nav_split.is_collapsed();
-        let now_playing = imp.now_playing.get();
-        sidebar.set_icons_only((imp.sidebar_icons_only.get() || now_playing) && !collapsed);
-        handle.set_visible(!collapsed && !now_playing);
+        // The narrow layout leaves the sidebar as it is on other pages.
+        let now_playing = imp.now_playing.get() && !collapsed;
+        let shown = if now_playing {
+            imp.now_playing_sidebar.get()
+        } else {
+            NowPlayingSidebar::Full
+        };
+        let hidden = shown == NowPlayingSidebar::Hidden;
+        sidebar.set_icons_only(
+            (imp.sidebar_icons_only.get() || shown == NowPlayingSidebar::Icons) && !collapsed,
+        );
+        handle.set_visible(!collapsed && shown == NowPlayingSidebar::Full);
         if let Some(shade) = imp.sidebar_shade.get() {
-            shade.set_visible(!collapsed);
+            shade.set_visible(!collapsed && !hidden);
         }
-        let width = match imp.nav_split.sidebar() {
+        if let Some(controls) = imp.start_controls.get() {
+            controls.set_visible(hidden && !controls.is_empty());
+        }
+        self.update_sidebar_button(now_playing);
+        let page = imp.nav_split.sidebar();
+        if let Some(view) = page.as_ref().and_then(|page| page.child()) {
+            view.set_visible(!hidden);
+        }
+        let width = match page {
+            _ if hidden => 0.0,
             // As narrow as the icons and the header's buttons allow.
             Some(page) if sidebar.icons_only() => {
                 f64::from(page.measure(gtk::Orientation::Horizontal, -1).0)
@@ -535,6 +575,29 @@ impl MainWindow {
         };
         imp.nav_split.set_min_sidebar_width(width);
         imp.nav_split.set_max_sidebar_width(width);
+    }
+
+    /// The arrow points up while Now Playing shows the sidebar's icons, left while it
+    /// hides the sidebar and right while it shows all of it.
+    fn update_sidebar_button(&self, now_playing: bool) {
+        let button = &self.imp().sidebar_button;
+        button.set_visible(now_playing);
+        let (icon, state) = match self.imp().now_playing_sidebar.get() {
+            NowPlayingSidebar::Icons => (icons::SIDEBAR_ICONS, "Icons Only"),
+            NowPlayingSidebar::Hidden => (icons::SIDEBAR_HIDDEN, "Hidden"),
+            NowPlayingSidebar::Full => (icons::SIDEBAR_FULL, "Full"),
+        };
+        button.set_icon_name(icon);
+        set_tooltip(button, &format!("Sidebar: {state}"));
+    }
+
+    /// Steps Now Playing's sidebar on to the next of its sizes, which it keeps.
+    fn cycle_now_playing_sidebar(&self) {
+        let shown = self.imp().now_playing_sidebar.get().cycle();
+        self.imp().now_playing_sidebar.set(shown);
+        self.ctx()
+            .update_settings(|settings| settings.window.now_playing_sidebar = shown);
+        self.update_sidebar_width();
     }
 
     /// Narrowing the window hides a queue that sat beside the page, and widening it brings

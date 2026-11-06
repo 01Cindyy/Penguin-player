@@ -132,6 +132,10 @@ collapses and the player bar turns compact. Pages switch to their narrow layout
 While the Now Playing page is the visible page the window hides the player bar (the
 page has its own controls) and the search field, lets the page reach up behind the
 header, and shows the sidebar as icons only; leaving restores the sidebar's own size.
+An arrow at the page's top left steps it through icons only (^), hidden (<) and the
+whole sidebar, resized like on other pages (>), and the settings keep the choice
+(`WindowState::now_playing_sidebar`). While it is hidden, the page's header shows any
+window buttons the decoration layout puts at the start, which the sidebar's header held.
 
 With lyrics on, Now Playing shows them in the right half of pages at least 860 sp wide
 (an `OverlaySplitView` whose sidebar is half the page). Narrower pages have no room for

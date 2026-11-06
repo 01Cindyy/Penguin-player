@@ -28,6 +28,29 @@ pub enum CornerStyle {
     Round,
 }
 
+/// How much of the sidebar Now Playing shows. Other pages always show all of it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NowPlayingSidebar {
+    /// Only its icons.
+    #[default]
+    Icons,
+    Hidden,
+    /// All of it, resized by dragging like on other pages.
+    Full,
+}
+
+impl NowPlayingSidebar {
+    /// Icons → Hidden → Full → Icons, the order its button steps through.
+    pub fn cycle(self) -> Self {
+        match self {
+            NowPlayingSidebar::Icons => NowPlayingSidebar::Hidden,
+            NowPlayingSidebar::Hidden => NowPlayingSidebar::Full,
+            NowPlayingSidebar::Full => NowPlayingSidebar::Icons,
+        }
+    }
+}
+
 /// Window translucency, which works with any theme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -61,6 +84,7 @@ pub struct WindowState {
     pub visualizer_height: i32,
     /// Now Playing shows the lyrics.
     pub now_playing_lyrics: bool,
+    pub now_playing_sidebar: NowPlayingSidebar,
 }
 
 impl Default for WindowState {
@@ -74,6 +98,7 @@ impl Default for WindowState {
             queue_width: 320,
             visualizer_height: 22,
             now_playing_lyrics: false,
+            now_playing_sidebar: NowPlayingSidebar::Icons,
         }
     }
 }
@@ -343,6 +368,7 @@ mod tests {
             window: WindowState {
                 sidebar_width: 300,
                 sidebar_icons_only: true,
+                now_playing_sidebar: NowPlayingSidebar::Full,
                 ..WindowState::default()
             },
             ..Settings::default()
@@ -397,6 +423,17 @@ mod tests {
         );
         assert!(!settings.defined_edges && !settings.quality_details);
         assert_eq!(settings.theme, DEFAULT_THEME_ID);
+        assert_eq!(
+            settings.window.now_playing_sidebar,
+            NowPlayingSidebar::Icons
+        );
+    }
+
+    #[test]
+    fn now_playing_sidebar_cycles() {
+        assert_eq!(NowPlayingSidebar::Icons.cycle(), NowPlayingSidebar::Hidden);
+        assert_eq!(NowPlayingSidebar::Hidden.cycle(), NowPlayingSidebar::Full);
+        assert_eq!(NowPlayingSidebar::Full.cycle(), NowPlayingSidebar::Icons);
     }
 
     #[test]

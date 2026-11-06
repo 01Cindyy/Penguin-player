@@ -1,7 +1,8 @@
 //! Now Playing: the playing song filling the window, its art large in the middle over
 //! a blur of itself, with the playback controls underneath. While it is shown the
 //! window hides the player bar and the search field and narrows the sidebar to its
-//! icons (see `MainWindow`).
+//! icons, or hides it or shows all of it, as the arrow at its top left picks (see
+//! `MainWindow`).
 //!
 //! With lyrics on, wide pages show them in their right half. Narrow ones have no room
 //! for them, so they only show the art.

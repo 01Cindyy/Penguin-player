@@ -47,6 +47,10 @@ pub const SORT_DESCENDING: &str = "mp-sort-descending-symbolic";
 pub const REFRESH: &str = "mp-refresh-symbolic";
 pub const CHECK: &str = "mp-check-symbolic";
 pub const EXPAND: &str = "mp-expand-symbolic";
+/// How much of the sidebar Now Playing shows.
+pub const SIDEBAR_ICONS: &str = "mp-sidebar-icons-symbolic";
+pub const SIDEBAR_HIDDEN: &str = "mp-sidebar-hidden-symbolic";
+pub const SIDEBAR_FULL: &str = "mp-sidebar-full-symbolic";
 
 pub const PREFERENCES: &str = "mp-preferences-symbolic";
 /// The preferences' pages.

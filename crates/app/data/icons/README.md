@@ -60,6 +60,9 @@ The LGPL v3 is at <https://www.gnu.org/licenses/lgpl-3.0.html>.
 | `mp-repeat-symbolic` | `status/media-playlist-repeat-symbolic` |
 | `mp-search-symbolic` | `actions/system-search-symbolic` |
 | `mp-shuffle-symbolic` | `status/media-playlist-shuffle-symbolic` |
+| `mp-sidebar-full-symbolic` | `ui/pan-end-symbolic` |
+| `mp-sidebar-hidden-symbolic` | `ui/pan-start-symbolic` |
+| `mp-sidebar-icons-symbolic` | `ui/pan-up-symbolic` |
 | `mp-skip-backward-symbolic` | `actions/media-skip-backward-symbolic` |
 | `mp-skip-forward-symbolic` | `actions/media-skip-forward-symbolic` |
 | `mp-song-symbolic` | `mimetypes/audio-x-generic-symbolic` |

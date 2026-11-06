@@ -25,4 +25,7 @@ pub use model::{CoverId, Playlist, PlaylistEntry, PlaylistId, PlaylistItemId, Tr
 pub use paths::AppPaths;
 pub use queue::{PlayQueue, RepeatMode};
 pub use search::SearchQuery;
-pub use settings::{ColorSchemePreference, CornerStyle, PluginPermissions, Settings, Transparency};
+pub use settings::{
+    ColorSchemePreference, CornerStyle, NowPlayingSidebar, PluginPermissions, Settings,
+    Transparency,
+};
