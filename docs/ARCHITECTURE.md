@@ -415,6 +415,7 @@ under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
 | Variable | Effect |
 |---|---|
 | `RUST_LOG=debug` | Verbose logging (`env_logger`). |
+| `GSK_RENDERER=vulkan\|gl\|cairo` | GTK's renderer. On Windows the app picks `vulkan` unless this is set, as GTK's default there (OpenGL) lagged on some PCs; GTK falls back to its usual choice where Vulkan doesn't start. |
 | `PENGUIN_PLAYER_HOME=<dir>` | Keep config/data/cache under `<dir>` (portable mode; safe testing). |
 | `PENGUIN_PLAYER_NULL_AUDIO=1` | Decode in real time but discard audio (no sound device). |
 | `PENGUIN_PLAYER_SCREENSHOT=<file.png>` | Debug builds: render the window to a PNG once loaded, then quit. |
