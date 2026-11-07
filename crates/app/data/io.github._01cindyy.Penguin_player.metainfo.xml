@@ -48,6 +48,19 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.0" date="2026-11-07">
+      <description>
+        <p>A more flexible Now Playing page, and smoother drawing on Windows.</p>
+        <ul>
+          <li>Now Playing's sidebar can show icons only, hide or open in full, with the arrow at its top left</li>
+          <li>Lyrics no longer change size as they scroll, and the current line stays centred</li>
+          <li>Lyrics are left out when the window is too narrow to show them beside the cover</li>
+          <li>The queue stays shown or hidden as you left it when the window is resized</li>
+          <li>A wider seek bar on Now Playing, whose controls now follow the cover smoothly as the window is resized</li>
+          <li>On Windows, the app draws with Vulkan, which runs smoother with some graphics drivers</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-11-04">
       <description>
         <p>Windows support, a waveform seek bar and a more polished look throughout.</p>

@@ -80,7 +80,7 @@ makepkg -si
 Download the `.deb`, then:
 
 ```sh
-sudo apt install ./penguin-player_1.1.0-1_amd64.deb
+sudo apt install ./penguin-player_1.2.0-1_amd64.deb
 ```
 
 ### Fedora
@@ -88,7 +88,7 @@ sudo apt install ./penguin-player_1.1.0-1_amd64.deb
 Download the `.rpm`, then:
 
 ```sh
-sudo dnf install ./penguin-player-1.1.0-1.x86_64.rpm
+sudo dnf install ./penguin-player-1.2.0-1.x86_64.rpm
 ```
 
 ### AppImage (any distribution)
@@ -96,8 +96,8 @@ sudo dnf install ./penguin-player-1.1.0-1.x86_64.rpm
 Download the `.AppImage`, make it executable and run it:
 
 ```sh
-chmod +x penguin-player-1.1.0-x86_64.AppImage
-./penguin-player-1.1.0-x86_64.AppImage
+chmod +x penguin-player-1.2.0-x86_64.AppImage
+./penguin-player-1.2.0-x86_64.AppImage
 ```
 
 The AppImage uses your system's GTK and libadwaita, so it needs the versions above.
@@ -115,7 +115,7 @@ The `.tar.gz` holds the program and an installer. Extract it, then run, as yours
 
 ### Windows
 
-Download `penguin-player-1.1.0-windows-x86_64-setup.exe` and run it. It needs 64-bit
+Download `penguin-player-1.2.0-windows-x86_64-setup.exe` and run it. It needs 64-bit
 Windows 10 or 11. You can install it for your user or for everyone on the pc in program files, 
 and afterwards it's listed under **Open with** for your music files.
 
@@ -134,7 +134,7 @@ On Windows, run this in PowerShell and compare the result with the file's line i
 `SHA256SUMS`:
 
 ```powershell
-Get-FileHash penguin-player-1.1.0-windows-x86_64-setup.exe
+Get-FileHash penguin-player-1.2.0-windows-x86_64-setup.exe
 ```
 
 ## Getting started

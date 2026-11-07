@@ -1565,7 +1565,7 @@ dependencies = [
 
 [[package]]
 name = "mp-audio"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "async-channel",
  "cpal",
@@ -1582,7 +1582,7 @@ dependencies = [
 
 [[package]]
 name = "mp-core"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "directories",
  "fastrand",
@@ -1595,7 +1595,7 @@ dependencies = [
 
 [[package]]
 name = "mp-library"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "lofty",
  "log",
@@ -1611,7 +1611,7 @@ dependencies = [
 
 [[package]]
 name = "mp-plugins"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "async-channel",
  "libc",
@@ -1628,7 +1628,7 @@ dependencies = [
 
 [[package]]
 name = "mp-theme"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "gtk4",
  "libadwaita",
@@ -1969,7 +1969,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "penguin-player"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "async-channel",
  "env_logger",
