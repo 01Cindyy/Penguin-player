@@ -74,6 +74,7 @@ fn activate(app: &adw::Application, context: &RefCell<Option<Rc<AppContext>>>) {
     install_actions(&ctx);
     let window = MainWindow::new(&ctx);
     connect_window_requests(&ctx, &window);
+    ctx.covers.release_in_background(&window);
     window.present();
     ctx.start();
 

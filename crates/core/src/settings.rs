@@ -185,6 +185,9 @@ pub struct Settings {
     /// Save lyrics that plugins find as `.lrc` files beside the songs, rather than only
     /// in the cache.
     pub save_found_lyrics: bool,
+    /// Draw with the processor rather than the graphics card, which takes much less
+    /// memory. Read when the app starts.
+    pub low_memory: bool,
     pub window: WindowState,
 }
 
@@ -210,6 +213,7 @@ impl Default for Settings {
             plugin_permissions: BTreeMap::new(),
             plugin_settings: BTreeMap::new(),
             save_found_lyrics: false,
+            low_memory: false,
             window: WindowState::default(),
         }
     }
@@ -422,6 +426,7 @@ mod tests {
             "settings from before the visualiser show it"
         );
         assert!(!settings.defined_edges && !settings.quality_details);
+        assert!(!settings.low_memory);
         assert_eq!(settings.theme, DEFAULT_THEME_ID);
         assert_eq!(
             settings.window.now_playing_sidebar,

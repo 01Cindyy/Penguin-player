@@ -139,6 +139,10 @@ impl Navigator {
     pub(crate) fn new(context: Weak<AppContext>) -> Self {
         let navigator: Self = glib::Object::new();
         navigator.imp().context.replace(context);
+        // Pages left behind are freed, and their memory can go back to the system.
+        navigator
+            .view()
+            .connect_visible_page_notify(|_| crate::memory::release_soon());
         navigator
     }
 

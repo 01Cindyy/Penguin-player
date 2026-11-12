@@ -23,6 +23,7 @@ pub(super) fn page(ctx: &Rc<AppContext>) -> adw::PreferencesPage {
     page.add(&folder_group(ctx));
     page.add(&library_group(ctx));
     page.add(&playback_group(ctx));
+    page.add(&performance_group(ctx));
     page.add(&clear_group(ctx));
     page
 }
@@ -263,6 +264,29 @@ fn playback_group(ctx: &Rc<AppContext>) -> adw::PreferencesGroup {
         unavailable.add_prefix(&super::alert_icon("warning"));
         group.add(&unavailable);
     }
+    group
+}
+
+/// Low Memory Mode, which the app reads when it starts.
+fn performance_group(ctx: &Rc<AppContext>) -> adw::PreferencesGroup {
+    let low_memory = adw::SwitchRow::builder()
+        .title("Low Memory Mode")
+        .subtitle(
+            "Draw with the processor instead of the graphics card, which uses much less \
+             memory but can make animations less smooth. Takes effect the next time the \
+             app starts.",
+        )
+        .active(ctx.settings().low_memory)
+        .build();
+    low_memory.connect_active_notify(glib::clone!(
+        #[weak]
+        ctx,
+        move |row| ctx.update_settings(|settings| settings.low_memory = row.is_active())
+    ));
+    let group = adw::PreferencesGroup::builder()
+        .title("Performance")
+        .build();
+    group.add(&low_memory);
     group
 }
 

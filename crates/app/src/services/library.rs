@@ -212,6 +212,8 @@ impl LibraryService {
                 ctx.covers.library_changed();
                 ctx.player
                     .broadcast(PlayerEvent::LibraryUpdated { track_count });
+                // The old library data and the work of loading it are freed by now.
+                crate::memory::release_soon();
             }
             Update::ScanStarted => {
                 self.set_progress(0, 0);
@@ -230,6 +232,7 @@ impl LibraryService {
                 if let Some(message) = summary_message(&summary) {
                     ctx.toast(&message);
                 }
+                crate::memory::release_soon();
             }
             Update::FolderUnavailable(folder) => {
                 log::warn!("Music folder {} is unavailable", folder.display());

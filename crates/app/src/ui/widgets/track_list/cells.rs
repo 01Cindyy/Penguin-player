@@ -1,5 +1,6 @@
 //! Columns of a [`super::TrackList`] and the widget that renders one cell.
 
+use std::borrow::Cow;
 use std::cell::{OnceCell, RefCell};
 
 use adw::prelude::*;
@@ -258,17 +259,18 @@ impl TrackCell {
     }
 }
 
-fn cell_text(column: TrackColumn, track: &TrackObject) -> String {
+/// Borrowed where it can be, as rows are filled again on every scroll.
+fn cell_text(column: TrackColumn, track: &TrackObject) -> Cow<'_, str> {
     match column {
-        TrackColumn::Artist => track.artist(),
-        TrackColumn::Album => track.album(),
+        TrackColumn::Artist => track.track().display_artist().into(),
+        TrackColumn::Album => track.track().display_album().into(),
         TrackColumn::Year => match track.year() {
-            0 => String::new(),
-            year => year.to_string(),
+            0 => "".into(),
+            year => year.to_string().into(),
         },
-        TrackColumn::Duration => format_duration(track.track().duration()),
-        TrackColumn::Quality => track.quality(),
-        _ => String::new(),
+        TrackColumn::Duration => format_duration(track.track().duration()).into(),
+        TrackColumn::Quality => track.quality().into(),
+        _ => "".into(),
     }
 }
 

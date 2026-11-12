@@ -10,6 +10,7 @@
 mod application;
 mod context;
 mod display;
+mod memory;
 mod model;
 mod player;
 #[cfg(debug_assertions)]

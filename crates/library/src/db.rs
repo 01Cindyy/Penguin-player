@@ -92,8 +92,9 @@ pub(crate) fn open(path: &Path) -> Result<Connection> {
     let conn = Connection::open(path)?;
     conn.busy_timeout(BUSY_TIMEOUT)?;
     enable_wal(&conn)?;
-    // NORMAL is safe in WAL mode and avoids a sync on every commit.
-    conn.execute_batch("PRAGMA synchronous = NORMAL;")?;
+    // NORMAL is safe in WAL mode and avoids a sync on every commit. A 256 KiB page
+    // cache rather than 2 MiB per connection: the system caches the file as well.
+    conn.execute_batch("PRAGMA synchronous = NORMAL; PRAGMA cache_size = -256;")?;
     prepare(conn)
 }
 

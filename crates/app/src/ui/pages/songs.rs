@@ -108,8 +108,9 @@ impl SongsPage {
             item.downcast_ref::<TrackObject>()
                 .is_some_and(|track| current.get().matches(track.track()))
         });
+        // No filter while "All" is chosen, so no song is checked.
         let filtered =
-            gtk::FilterListModel::new(Some(ctx.store.tracks()), Some(custom_filter.clone()));
+            gtk::FilterListModel::new(Some(ctx.store.tracks()), None::<gtk::CustomFilter>);
 
         let list = TrackList::builder(ctx)
             .columns(&[
@@ -157,7 +158,15 @@ impl SongsPage {
     }
 
     fn set_filter(&self, filter: SongFilter) {
-        if self.filter.replace(filter) != filter {
+        let previous = self.filter.replace(filter);
+        if filter == previous {
+            return;
+        }
+        if filter == SongFilter::All {
+            self.filtered.set_filter(None::<&gtk::CustomFilter>);
+        } else if previous == SongFilter::All {
+            self.filtered.set_filter(Some(&self.custom_filter));
+        } else {
             self.custom_filter.changed(gtk::FilterChange::Different);
         }
     }

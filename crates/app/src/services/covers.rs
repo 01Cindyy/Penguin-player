@@ -1,5 +1,5 @@
 //! Album art at the size it is shown: decoded and scaled off the main thread, kept in
-//! a memory-bounded LRU, and written to disk as PNG thumbnails so the next start is
+//! a memory-bounded LRU, and written to disk as thumbnails so the next start is
 //! instant.
 
 use std::cell::RefCell;
@@ -9,6 +9,8 @@ use std::fs;
 use std::future::Future;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
+use std::time::Duration;
 
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -17,7 +19,12 @@ use mp_core::util::stable_hash;
 use mp_core::{AppPaths, CoverId, PlaylistId};
 
 /// Pixel data of decoded covers kept in memory.
-const MEMORY_BUDGET_BYTES: usize = 64 * 1024 * 1024;
+const MEMORY_BUDGET_BYTES: usize = 32 * 1024 * 1024;
+/// How long the window stays in the background before decoded covers are let go.
+const BACKGROUND_RELEASE_DELAY: Duration = Duration::from_secs(5 * 60);
+/// Thumbnails of covers without transparency are JPEG, which for photos and detailed
+/// art takes about a fifth of the space of PNG.
+const THUMBNAIL_JPEG_QUALITY: &str = "90";
 /// Starts the file name of every image chosen for a playlist, which tells them from
 /// covers.
 const PLAYLIST_IMAGE_PREFIX: &str = "playlist-";
@@ -132,6 +139,31 @@ impl CoverCache {
         }));
     }
 
+    /// Lets go of decoded covers once `window` has been in the background for
+    /// [`BACKGROUND_RELEASE_DELAY`]. Covers on screen stay, as their widgets hold them.
+    pub fn release_in_background(&self, window: &impl IsA<gtk::Window>) {
+        let timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
+        window.connect_is_active_notify(glib::clone!(
+            #[weak(rename_to = cache)]
+            self,
+            move |window| {
+                if let Some(source) = timer.take() {
+                    source.remove();
+                }
+                if window.is_active() {
+                    return;
+                }
+                let (cache, fired) = (cache.clone(), timer.clone());
+                let source = glib::timeout_add_local_once(BACKGROUND_RELEASE_DELAY, move || {
+                    fired.take();
+                    cache.inner().memory.borrow_mut().clear();
+                    crate::memory::release_soon();
+                });
+                timer.replace(Some(source));
+            }
+        ));
+    }
+
     /// Notes that `cover` belongs to a song from outside the library, and so is in
     /// [`AppPaths::opened_covers_dir`].
     pub fn add_opened(&self, cover: &CoverId) {
@@ -241,6 +273,7 @@ impl CoverCache {
         }
     }
 
+    /// Where the thumbnail of `key` is, without its extension (see [`save_thumbnail`]).
     fn thumbnail_path(&self, key: &CoverKey) -> PathBuf {
         let stem = Path::new(file_name(&key.cover)).file_stem().map_or_else(
             || key.cover.0.clone(),
@@ -249,7 +282,7 @@ impl CoverCache {
         self.inner()
             .thumbnails_dir
             .join(key.size.to_string())
-            .join(format!("{stem}.png"))
+            .join(stem)
     }
 }
 
@@ -301,7 +334,7 @@ pub fn remove_playlist_image(dir: &Path, image: &CoverId) {
     }
 }
 
-/// Removes the `<size>/<cover>.png` thumbnails whose cover is no longer in
+/// Removes the `<size>/<cover>.jpg` and `.png` thumbnails whose cover is no longer in
 /// `covers_dir`, and leaves those of images chosen for playlists, which are elsewhere.
 /// Leaves everything alone if the covers can't be listed.
 fn remove_orphaned_thumbnails(covers_dir: &Path, thumbnails_dir: &Path) {
@@ -327,11 +360,13 @@ fn remove_orphaned_thumbnails(covers_dir: &Path, thumbnails_dir: &Path) {
             continue;
         };
         for path in thumbnails.filter_map(|entry| Some(entry.ok()?.path())) {
-            let is_png = path.extension().is_some_and(|extension| extension == "png");
+            let is_thumbnail = path
+                .extension()
+                .is_some_and(|extension| extension == "jpg" || extension == "png");
             let orphaned = path.file_name().and_then(stem).is_some_and(|stem| {
                 !in_use.contains(&stem) && !stem.starts_with(PLAYLIST_IMAGE_PREFIX)
             });
-            if is_png
+            if is_thumbnail
                 && orphaned
                 && let Err(err) = fs::remove_file(&path)
             {
@@ -356,21 +391,24 @@ enum LoadError {
 /// Runs on GIO's blocking pool: reuse the thumbnail if there is one, otherwise decode
 /// the source scaled down and save a thumbnail for next time.
 fn load_texture(source: &Path, thumbnail: &Path, size: u32) -> Result<gdk::Texture, LoadError> {
-    if thumbnail.exists() {
-        match gdk::Texture::from_filename(thumbnail) {
-            Ok(texture) => return Ok(texture),
-            Err(err) => log::debug!("Regenerating {}: {err}", thumbnail.display()),
+    // PNG for covers with transparency, and for every thumbnail older versions saved.
+    for extension in ["jpg", "png"] {
+        let saved = thumbnail.with_added_extension(extension);
+        if saved.exists() {
+            match gdk::Texture::from_filename(&saved) {
+                Ok(texture) => return Ok(texture),
+                Err(err) => log::debug!("Regenerating {}: {err}", saved.display()),
+            }
         }
     }
     if !source.exists() {
         return Err(LoadError::Missing);
     }
     let pixbuf = decode_scaled(source, size).map_err(LoadError::Unreadable)?;
-    let texture = texture_from_pixbuf(&pixbuf);
-    if let Err(err) = save_thumbnail(&texture, thumbnail) {
+    if let Err(err) = save_thumbnail(&pixbuf, thumbnail) {
         log::debug!("Could not save thumbnail {}: {err}", thumbnail.display());
     }
-    Ok(texture)
+    Ok(texture_from_pixbuf(&pixbuf))
 }
 
 fn decode_scaled(path: &Path, size: u32) -> Result<gdk_pixbuf::Pixbuf, String> {
@@ -406,14 +444,22 @@ fn texture_from_pixbuf(pixbuf: &gdk_pixbuf::Pixbuf) -> gdk::Texture {
     .upcast()
 }
 
-/// Writes to a temporary file first so a crash never leaves a truncated thumbnail.
-fn save_thumbnail(texture: &gdk::Texture, path: &Path) -> Result<(), String> {
+/// Saves `<path>.jpg`, or `<path>.png` for an image with transparency, which JPEG
+/// can't hold. Writes to a temporary file first so a crash never leaves a truncated
+/// thumbnail.
+fn save_thumbnail(pixbuf: &gdk_pixbuf::Pixbuf, path: &Path) -> Result<(), String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|err| err.to_string())?;
     }
-    let partial = path.with_extension("png.part");
-    texture
-        .save_to_png(&partial)
+    let (extension, format, options): (_, _, &[_]) = if pixbuf.has_alpha() {
+        ("png", "png", &[])
+    } else {
+        ("jpg", "jpeg", &[("quality", THUMBNAIL_JPEG_QUALITY)])
+    };
+    let path = path.with_added_extension(extension);
+    let partial = path.with_added_extension("part");
+    pixbuf
+        .savev(&partial, format, options)
         .map_err(|err| err.to_string())?;
     std::fs::rename(&partial, path).map_err(|err| err.to_string())
 }
@@ -466,6 +512,12 @@ impl<K: Hash + Eq + Clone, V: Clone> Lru<K, V> {
         );
     }
 
+    /// Drops every entry, and the room the map took for them.
+    fn clear(&mut self) {
+        self.entries = HashMap::new();
+        self.used = 0;
+    }
+
     fn evict_oldest(&mut self) -> bool {
         let oldest = self
             .entries
@@ -509,7 +561,9 @@ mod tests {
         for size in ["36", "200"] {
             fs::create_dir_all(thumbnails.join(size)).unwrap();
             for name in [
+                "00000000000000aa.jpg",
                 "00000000000000aa.png",
+                "00000000000000bb.jpg",
                 "00000000000000bb.png",
                 "playlist-1-00000000000000cc.png",
                 "notes.txt",
@@ -527,6 +581,7 @@ mod tests {
             assert_eq!(
                 left,
                 [
+                    "00000000000000aa.jpg",
                     "00000000000000aa.png",
                     "notes.txt",
                     "playlist-1-00000000000000cc.png"
@@ -555,7 +610,7 @@ mod tests {
         };
         assert_eq!(
             cache.thumbnail_path(&key),
-            Path::new("/tmp/mp/cache/thumbnails/96/ab12.png")
+            Path::new("/tmp/mp/cache/thumbnails/96/ab12")
         );
         assert_eq!(
             cache.source_path(&key.cover),
@@ -635,12 +690,38 @@ mod tests {
         pixbuf.fill(0x3366_99ff);
         pixbuf.savev(&source, "png", &[]).unwrap();
 
-        let thumbnail = dir.path().join("thumbs/64/cover.png");
+        let thumbnail = dir.path().join("thumbs/64/cover");
         let texture = load_texture(&source, &thumbnail, 64).unwrap();
         assert_eq!((texture.width(), texture.height()), (85, 64));
-        assert!(thumbnail.exists());
+        assert!(dir.path().join("thumbs/64/cover.jpg").exists());
 
         let reloaded = load_texture(&source, &thumbnail, 64).unwrap();
         assert_eq!((reloaded.width(), reloaded.height()), (85, 64));
+    }
+
+    #[test]
+    fn thumbnails_keep_transparency_and_older_ones_are_used() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("cover.png");
+        let pixbuf =
+            gdk_pixbuf::Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, true, 8, 100, 100).unwrap();
+        pixbuf.fill(0x3366_9980);
+        pixbuf.savev(&source, "png", &[]).unwrap();
+
+        let thumbnail = dir.path().join("thumbs/64/cover");
+        let texture = load_texture(&source, &thumbnail, 64).unwrap();
+        assert_eq!(texture.format(), gdk::MemoryFormat::R8g8b8a8);
+        assert!(dir.path().join("thumbs/64/cover.png").exists());
+        assert!(!dir.path().join("thumbs/64/cover.jpg").exists());
+
+        // Older versions saved every thumbnail as PNG.
+        let old = dir.path().join("thumbs/64/old");
+        let opaque =
+            gdk_pixbuf::Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, false, 8, 64, 64).unwrap();
+        opaque
+            .savev(old.with_added_extension("png"), "png", &[])
+            .unwrap();
+        let reloaded = load_texture(&dir.path().join("missing.png"), &old, 64).unwrap();
+        assert_eq!((reloaded.width(), reloaded.height()), (64, 64));
     }
 }

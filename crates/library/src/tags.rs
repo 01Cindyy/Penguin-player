@@ -12,7 +12,7 @@ use lofty::mp4::{Mp4Codec, Mp4File};
 use lofty::picture::{Picture, PictureType};
 use lofty::probe::Probe;
 use lofty::properties::FileProperties;
-use lofty::tag::{ItemKey, Tag};
+use lofty::tag::{ItemKey, Tag, TagType};
 use mp_core::{AudioFormat, Track, TrackId};
 
 use crate::chapter_limit::ChapterLimit;
@@ -94,7 +94,7 @@ fn read_with(
         });
     };
 
-    let file = match file_type {
+    let mut file = match file_type {
         // Only the MP4 reader knows the codec inside, which tells ALAC from AAC.
         FileType::Mp4 => {
             let mp4 = Mp4File::read_from(&mut probe.into_inner(), options)?;
@@ -110,10 +110,10 @@ fn read_with(
     apply_properties(&mut track, file.properties());
     let tags = tags_by_priority(&file);
     apply_tags(&mut track, &tags);
-    Ok(FileInfo {
-        track,
-        picture: cover_picture(&tags).cloned(),
-    })
+    // Taken out of the tag rather than copied, as it can be megabytes.
+    let picture = cover_picture(&tags)
+        .and_then(|(tag_type, index)| Some(file.tag_mut(tag_type)?.remove_picture(index)));
+    Ok(FileInfo { track, picture })
 }
 
 /// Whether lofty parses a file's tags or seeks past them (which `options` must match).
@@ -276,12 +276,16 @@ fn parse_number(value: &str) -> Option<u32> {
     (number > 0).then_some(number)
 }
 
-/// The front cover if there is one, otherwise the first picture of any type.
-fn cover_picture<'a>(tags: &[&'a Tag]) -> Option<&'a Picture> {
-    let pictures = || tags.iter().flat_map(|tag| tag.pictures());
-    pictures()
-        .find(|picture| picture.pic_type() == PictureType::CoverFront)
-        .or_else(|| pictures().next())
+/// Where the front cover is if there is one, otherwise the first picture of any type:
+/// its tag, and its position among the tag's pictures.
+fn cover_picture(tags: &[&Tag]) -> Option<(TagType, usize)> {
+    let find = |wanted: fn(&Picture) -> bool| {
+        tags.iter().find_map(|tag| {
+            let index = tag.pictures().iter().position(wanted)?;
+            Some((tag.tag_type(), index))
+        })
+    };
+    find(|picture| picture.pic_type() == PictureType::CoverFront).or_else(|| find(|_| true))
 }
 
 #[cfg(test)]

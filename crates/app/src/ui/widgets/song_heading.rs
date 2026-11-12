@@ -45,8 +45,8 @@ impl SongHeading {
     }
 
     pub fn set_track(&self, track: &TrackObject) {
-        self.title.set_label(&track.title());
-        self.artist.set_label(&track.artist());
+        self.title.set_label(&track.track().title);
+        self.artist.set_label(track.track().display_artist());
         if let Some(cover) = &self.cover {
             cover.set_cover(track.track().cover.as_ref());
         }

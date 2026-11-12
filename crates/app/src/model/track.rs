@@ -101,18 +101,6 @@ impl TrackObject {
         object
     }
 
-    /// A track whose search text (see [`Track::search_text`]) was already prepared,
-    /// e.g. on a worker thread.
-    pub fn with_search_text(track: Track, search_text: String) -> Self {
-        let object = Self::new(track);
-        object
-            .imp()
-            .search_text
-            .set(search_text)
-            .expect("a freshly created TrackObject has no search text yet");
-        object
-    }
-
     /// The underlying track data, borrowed without copying.
     pub fn track(&self) -> &Track {
         self.imp().track()
@@ -132,8 +120,7 @@ impl TrackObject {
         mp_core::search::normalize(self.track().display_album_artist())
     }
 
-    /// Normalised text that search queries match against, computed on first use
-    /// unless it was prepared with the track.
+    /// Normalised text that search queries match against, computed on first use.
     pub fn search_text(&self) -> &str {
         self.imp()
             .search_text

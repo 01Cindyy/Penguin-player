@@ -23,10 +23,10 @@ pub struct LibrarySnapshot {
     pub artists: Vec<Artist>,
     /// How many tracks use each format, most common first.
     pub formats: Vec<(AudioFormat, usize)>,
-    /// The search text of each track and album, in the order of `tracks` and
-    /// `albums`. Normalising it is most of the work of a first search, so it is
-    /// prepared here rather than when someone types.
-    track_search_texts: Vec<String>,
+    /// The search text of each album, in the order of `albums`. Normalising it is
+    /// most of the work of a first search, so it is prepared here rather than when
+    /// someone types. Tracks make theirs on the first search instead, as keeping it
+    /// for every track from the start takes megabytes.
     album_search_texts: Vec<String>,
 }
 
@@ -37,14 +37,12 @@ impl LibrarySnapshot {
         let albums = collection::group_albums(&tracks);
         let artists = collection::group_artists(&albums);
         let formats = collection::format_counts(&tracks);
-        let track_search_texts = tracks.iter().map(Track::search_text).collect();
         let album_search_texts = albums.iter().map(album_search_text).collect();
         Self {
             tracks,
             albums,
             artists,
             formats,
-            track_search_texts,
             album_search_texts,
         }
     }
@@ -255,10 +253,10 @@ impl LibraryStore {
 
         let tracks = reuse_or_create(
             &imp.track_index,
-            snapshot.tracks.into_iter().zip(snapshot.track_search_texts),
-            |(track, _)| track.id,
-            |object: &TrackObject, (track, _)| object.track() == track,
-            |(track, search_text)| TrackObject::with_search_text(track, search_text),
+            snapshot.tracks.into_iter(),
+            |track| track.id,
+            |object: &TrackObject, track| object.track() == track,
+            TrackObject::new,
         );
         sync_list_store(&imp.tracks, &tracks);
 
@@ -413,10 +411,8 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_prepares_search_texts_in_order() {
+    fn snapshot_prepares_album_search_texts_in_order() {
         let snapshot = LibrarySnapshot::from_unsorted(library());
-        let expected: Vec<String> = snapshot.tracks.iter().map(Track::search_text).collect();
-        assert_eq!(snapshot.track_search_texts, expected);
         let expected: Vec<String> = snapshot.albums.iter().map(album_search_text).collect();
         assert_eq!(snapshot.album_search_texts, expected);
 
