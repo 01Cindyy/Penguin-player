@@ -236,15 +236,6 @@ impl Composition {
     pub fn percent(&self, count: usize) -> String {
         percent(count, self.tracks)
     }
-
-    /// `count` out of all tracks as a fraction in `0.0..=1.0`.
-    pub fn fraction(&self, count: usize) -> f64 {
-        if self.tracks == 0 {
-            0.0
-        } else {
-            count as f64 / self.tracks as f64
-        }
-    }
 }
 
 /// `part` of `whole` as a rounded percentage; never "0%" for a part that exists.

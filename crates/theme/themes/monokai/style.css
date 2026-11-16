@@ -1,0 +1,13 @@
+/* Monokai: every format on the Formats page in one of the palette's own colours,
+ * lightened or darkened only where it would not show against the theme's surfaces. */
+
+:root { --mp-codec-tile-fg-color: #272822; }
+.mp-codec-flac { --mp-codec-color: #66d9ef; }
+.mp-codec-alac { --mp-codec-color: #f92672; }
+.mp-codec-wav { --mp-codec-color: #e6db74; }
+.mp-codec-aiff { --mp-codec-color: #86de8e; }
+.mp-codec-mp3 { --mp-codec-color: #fd971f; }
+.mp-codec-aac { --mp-codec-color: #a6e22e; }
+.mp-codec-opus { --mp-codec-color: #ae81ff; }
+.mp-codec-vorbis { --mp-codec-color: #fb5e48; }
+.mp-codec-unknown { --mp-codec-color: #827e6b; }

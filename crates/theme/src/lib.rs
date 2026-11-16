@@ -83,6 +83,9 @@ pub struct Palette {
     pub player_bar_fg: Option<String>,
     pub border: Option<String>,
     pub hires_badge: Option<String>,
+    /// What is playing: the song's title in a list, its equaliser, the visualiser and
+    /// the seek bar's progress. They are in the accent when this is unset.
+    pub playing: Option<String>,
 }
 
 /// Corner radii and spacing in pixels. Unset values keep the app defaults.

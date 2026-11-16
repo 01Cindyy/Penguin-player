@@ -1,0 +1,65 @@
+{
+  "name": "Penguin",
+  "author": "Penguin Player",
+  "description": "The app's own look: black and white like its penguin, with the orange of the beak as the one accent.",
+  "version": "1.0",
+  "scheme": "any",
+  "colors": {
+    "accent": "#f68121",
+    "accent_fg": "#1c1006",
+    "destructive": "#c2444b",
+    "success": "#2f7d5f",
+    "warning": "#dcae5a"
+  },
+  "light": {
+    "accent": "#e06a10",
+    "window_bg": "#f6f7f8",
+    "window_fg": "#17181a",
+    "view_bg": "#fbfbfc",
+    "view_fg": "#17181a",
+    "headerbar_bg": "#f6f7f8",
+    "headerbar_fg": "#17181a",
+    "sidebar_bg": "#edeef0",
+    "sidebar_fg": "#1d1e21",
+    "card_bg": "#ffffff",
+    "card_fg": "#17181a",
+    "popover_bg": "#ffffff",
+    "popover_fg": "#17181a",
+    "dialog_bg": "#f8f8f9",
+    "dialog_fg": "#17181a",
+    "player_bar_bg": "#ffffff",
+    "player_bar_fg": "#17181a",
+    "border": "rgba(23, 24, 26, 0.10)",
+    "hires_badge": "#2c6690"
+  },
+  "dark": {
+    "window_bg": "#121315",
+    "window_fg": "#ececee",
+    "view_bg": "#121315",
+    "view_fg": "#ececee",
+    "headerbar_bg": "#121315",
+    "headerbar_fg": "#ececee",
+    "sidebar_bg": "#0d0e10",
+    "sidebar_fg": "#e4e5e8",
+    "card_bg": "#191a1d",
+    "card_fg": "#ececee",
+    "popover_bg": "#1e1f23",
+    "popover_fg": "#ececee",
+    "dialog_bg": "#17181b",
+    "dialog_fg": "#ececee",
+    "player_bar_bg": "#0d0e10",
+    "player_bar_fg": "#ececee",
+    "border": "rgba(236, 236, 238, 0.08)",
+    "hires_badge": "#9ec5e6"
+  },
+  "shape": {
+    "window_radius": 14,
+    "panel_radius": 14,
+    "cover_radius": 10,
+    "button_radius": 999,
+    "spacing": 12
+  },
+  "effects": {
+    "cover_shadow": 0.7
+  }
+}

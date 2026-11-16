@@ -241,7 +241,7 @@ impl NowPlayingPage {
         volume.fill_width();
         self.favourite.show_shortcut();
         let extras = gtk::Box::builder()
-            .spacing(4)
+            .spacing(6)
             .css_classes(["mp-player-extras"])
             .build();
         extras.append(&volume);

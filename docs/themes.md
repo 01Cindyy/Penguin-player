@@ -5,7 +5,8 @@ breathing room there is, shadows, the font, and (with a little CSS) the look of
 individual parts of the window.
 
 Three appearance options in Preferences → Appearance work on top of every theme:
-**Corners** (Square, Slight or Round, where Round keeps the theme's own radii),
+**Corners** (Square, Slight or Round: Slight, the default, sizes each radius by what it
+rounds, and Round keeps the theme's own radii, pills and circles included),
 **Defined Edges** (lines in the theme's text colour between the sidebar, queue, player
 bar and page, with a soft shadow from the theme's shade colour) and **Transparency** (a
 translucent window, with blur behind it where the desktop allows).
@@ -14,20 +15,26 @@ The app ships with these themes:
 
 | Theme | Id | Look |
 |---|---|---|
-| **Adwaita** (default) | `adwaita` | The native GNOME look. Follows your system's light/dark preference and accent colour, just a little rounder and airier. |
+| **Penguin** (default) | `penguin` | The app's own look: black and white like its penguin, with the orange of the beak as the one accent. Light and dark. |
+| **Adwaita** | `adwaita` | The native GNOME look. Follows your system's light/dark preference and accent colour. |
 | **Midnight** | `midnight` | A deeper dark mode: near-black surfaces for OLED screens and late nights, with your system accent colour. Dark only. |
-| **Soft Rice** | `rice` | Muted lavender with teal touches on deep charcoal (or soft lilac in light mode), with a floating player bar. |
+| **Soft Rice** | `rice` | Muted lavender on deep charcoal (or soft lilac in light mode), teal for what is playing, and a floating player bar. |
 | **Frost** | `frost` | Calm blue-grey with frosted blue accents, gentle contrast, light and dark. |
-| **Catppuccin** | `catppuccin` | Latte in light mode, Mocha in dark. |
-| **Dracula** | `dracula` | The classic Dracula palette. Dark only. |
-| **Everforest** | `everforest` | Soft forest greens, light and dark. |
-| **Gruvbox** | `gruvbox` | Retro, warm and earthy, light and dark. |
-| **Kanagawa** | `kanagawa` | Lotus in light mode, Wave in dark. |
-| **Nord** | `nord` | Snow Storm in light mode, Polar Night in dark. |
-| **One Dark** | `one-dark` | One Light in light mode, One Dark in dark. |
-| **Rosé Pine** | `rose-pine` | Dawn in light mode, Main in dark. |
-| **Solarized** | `solarized` | Solarized light and dark. |
-| **Tokyo Night** | `tokyo-night` | Day in light mode, Night in dark. |
+| **Ayu** | `ayu` | Light in light mode, Dark in dark. Gold, with blue for what is playing. |
+| **Catppuccin** | `catppuccin` | Latte in light mode, Mocha in dark. Mauve, with green for what is playing. |
+| **Dracula** | `dracula` | The classic Dracula palette: purple, with pink for what is playing. Dark only. |
+| **Everforest** | `everforest` | Soft forest greens, with purple for what is playing, light and dark. |
+| **Gruvbox** | `gruvbox` | Retro, warm and earthy: orange, with aqua for what is playing, light and dark. |
+| **Kanagawa** | `kanagawa` | Lotus in light mode, Wave in dark. Crystal blue, with sakura pink for what is playing. |
+| **Monokai** | `monokai` | Lime and pink on warm charcoal: lime for actions, pink for what is playing. Dark only. |
+| **Nord** | `nord` | Snow Storm in light mode, Polar Night in dark. Frost blue, with aurora green for what is playing. |
+| **One Dark** | `one-dark` | One Light in light mode, One Dark in dark. Blue, with magenta for what is playing. |
+| **Rosé Pine** | `rose-pine` | Dawn in light mode, Main in dark. Iris, with rose for what is playing. |
+| **Solarized** | `solarized` | Solarized light and dark. Blue, with magenta for what is playing. |
+| **Tokyo Night** | `tokyo-night` | Day in light mode, Night in dark. Blue, with purple for what is playing. |
+
+The twelve palette themes also draw the Formats page in their own colours (see
+[Format colours](#format-colours)), each in the theme's `style.css`.
 
 The palettes follow each project's published colours, adjusted where needed so every
 text and badge meets WCAG AA contrast.
@@ -39,10 +46,14 @@ If you use [pywal](https://github.com/eylles/pywal16) (or the original pywal), a
 from your wallpaper and changes along with it: run `wal -i <wallpaper>` and the player
 recolours itself straight away, without a restart or any setup.
 
-- The background and text colours are pywal's own; the sidebar, cards and menus are
-  slightly lighter (or, for a light palette from `wal -l`, slightly darker) steps of the
-  background. A dark palette gives a dark theme, a light palette a light one.
-- The accent is the most colourful of `color1` to `color6`.
+- The background is pywal's, taken a little deeper, and the text is pywal's, taken a
+  little further from it, for more contrast than the terminal colours have. The sidebar,
+  cards and menus are slightly lighter (or, for a light palette from `wal -l`, slightly
+  darker) steps of the background. A dark palette gives a dark theme, a light palette a
+  light one.
+- The accent is the most colourful of `color1` to `color6`. If another of them is
+  colourful and a long way round the colour wheel from it, that one marks what is
+  playing.
 - Every colour is nudged towards white or black where needed to meet the same WCAG AA
   contrast as the built-in themes, so a murky wallpaper never makes text unreadable.
 
@@ -151,6 +162,7 @@ text colour, so set them in pairs to keep text readable.
 | `player_bar_bg`, `player_bar_fg` | The now-playing bar | `--mp-player-bar-bg-color`, `--mp-player-bar-fg-color` |
 | `border` | Borders and separators | `--border-color` |
 | `hires_badge` | The "Hi-Res" quality badge | `--mp-hires-badge-color` |
+| `playing` | What is playing: the song's title in a list, its equaliser, the visualiser and the seek bar's progress. Leave it out and they are in the accent | `--mp-playing-color` |
 
 libadwaita works out the accent *text* colour (`--accent-color`, used for links and
 highlighted labels) from `accent` by itself, adjusting it to stay readable in light and
@@ -271,23 +283,23 @@ The app's own:
 | `--mp-cover-radius` | Album art; page headers use one and a half times this |
 | `--mp-button-radius` | Play (including on cards), previous and next, and the round "More Options" buttons |
 | `--mp-small-radius` | Small rounded things: row highlights, badges, links, previews (9px) |
-| `--mp-pill-radius` | Pill shapes: search field, filter chips, small buttons, meters (999px) |
+| `--mp-pill-radius` | Pill shapes: search field, filter chips, small buttons (999px) |
 | `--mp-spacing` | Base spacing unit; page margins are 2.5 units (1.5 on narrow windows) |
 | `--mp-window-bg-color` | Main window background (may be translucent) |
 | `--mp-panel-bg-color` | Sidebar and queue panel background |
 | `--mp-player-bar-bg-color`, `--mp-player-bar-fg-color` | Now-playing bar colours |
 | `--mp-player-bar-surface` | What the bar is painted with: its colour, made translucent by the transparency option |
 | `--mp-cover-shadow` | Shadow under album art and artist images (a `box-shadow` value) |
-| `--mp-cover-hover-shadow` | Shadow under a card's art while the pointer is on it (only settable in CSS) |
 | `--mp-cover-scrim-color`, `--mp-cover-scrim-fg-color` | The tint and the equaliser over the playing song's cover (only settable in CSS) |
 | `--mp-knob-shadow` | Shadow under the knob of the seek and volume sliders (only settable in CSS) |
 | `--mp-hero-shadow` | Shadow under the art on Now Playing (only settable in CSS) |
 | `--mp-small-shadow`, `--mp-floating-shadow` | Shadows under small art and marks, and under what floats over a page, such as a card's play button (only settable in CSS) |
-| `--mp-card-shadow`, `--mp-card-hover-shadow` | The outline and shadow around cards, at rest and under the pointer (only settable in CSS) |
-| `--mp-play-shadow`, `--mp-play-hover-shadow` | The glow under the main play buttons (only settable in CSS) |
-| `--mp-title-tracking` | Letter spacing of large titles (only settable in CSS) |
-| `--mp-hires-badge-color` | Hi-Res badge and meter |
-| `--mp-lossless-badge-color` | Lossless badge and meter (only settable in CSS) |
+| `--mp-card-shadow` | The outline and shadow around cards (only settable in CSS) |
+| `--mp-title-tracking` | Letter spacing of page titles (only settable in CSS) |
+| `--mp-ease` | The curve every transition moves on (only settable in CSS) |
+| `--mp-hires-badge-color` | Hi-Res badge |
+| `--mp-playing-color` | What is playing (see `playing` above); unset unless the theme sets it, and the accent is used instead |
+| `--mp-lossless-badge-color` | Lossless badge (only settable in CSS) |
 | `--mp-codec-color` | A format's colour; see [Format colours](#format-colours) |
 | `--mp-codec-tile-fg-color` | The text on a format's tile (only settable in CSS) |
 
@@ -353,7 +365,7 @@ details that can change.
 | `.mp-top-result`, `.mp-top-result-title`, `.mp-top-result-play`, `.mp-kind-pill` | The search page's Top Result card, its title, play button and "Album"/"Song" pill |
 | `.mp-song-rows`, `.mp-song-row` | Short song lists, such as on the search page |
 | `.mp-format-overview`, `.mp-composition-bar`, `.mp-composition-segment` | The Formats page's library overview and its bar |
-| `.mp-quality-tier`, `.mp-meter` (with `.mp-hires`, `.mp-lossless`, `.mp-lossy`) | Quality tiers and their meters |
+| `.mp-quality-tier` | Quality tiers: a badge, how many songs and their share |
 | `.mp-format-card` | Cards on the Formats page |
 | `.mp-codec-tile`, `.mp-codec-dot` | A format's tile on its page, and its dot in legends and cards |
 | `.mp-now-playing-page` | The Now Playing page: `cover-backdrop` (the blurred art), `.mp-now-playing-scrim` (the tint over it that keeps text readable), `.mp-now-playing-column` (art and controls), `.mp-cover-hero` (the art), `.mp-now-title`, `.mp-now-byline` (artist and album, with `.mp-now-album`), `.mp-now-quality-row` |
@@ -411,6 +423,9 @@ wrong.
   colour and its background (WCAG AA). Badge text counts too: it sits on a light tint of
   its own colour, so in light mode `hires_badge` needs to be a shade darker than it would
   on the plain background. All built-in themes meet this in both modes.
+- **A second colour.** `playing` is text as well as bars, so it needs the same 4.5:1
+  against the window, view, card, sidebar and player bar. Pick it well away from the
+  accent's hue, so the two read as different things.
 - **Start small.** An accent colour and a couple of radii already make a theme feel
   different. Add surfaces one pair at a time.
 - **Prefer variables.** In `style.css`, `var(--accent-bg-color)` follows the theme and

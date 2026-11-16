@@ -1,8 +1,8 @@
 //! Every shipped colour combination, and every one the pywal theme generates, must meet
 //! WCAG AA: 4.5:1 for text on its
 //! background and 3:1 for the accent where it is used as a graphic, such as the seek bar
-//! fill. Format badges count as text, on the tint of their own colour they lay over each
-//! surface.
+//! fill. Format badges count as text on each surface they are shown on, and so does a
+//! theme's colour for what is playing.
 
 use std::path::Path;
 
@@ -15,11 +15,6 @@ const GRAPHICS: f64 = 3.0;
 const WHITE: &str = "#ffffff";
 /// Text colour libadwaita puts on warning backgrounds (black at 80% over a light bg).
 const NEAR_BLACK: &str = "#333333";
-
-/// How much of its text colour each badge lays over the surface behind it, as in
-/// `.mp-format-badge` in the app's style.css.
-const HIRES_TINT: f64 = 0.12;
-const LOSSLESS_TINT: f64 = 0.10;
 
 /// libadwaita's colours for what a theme leaves unset.
 struct Defaults {
@@ -183,12 +178,9 @@ fn badge_text_meets_wcag_aa_wherever_badges_are_shown() {
                 ("card", color(&palette.card_bg, defaults.card)),
                 ("player bar", color(&palette.player_bar_bg, headerbar)),
             ];
-            for (badge, text, tint) in [
-                ("hi-res", hires, HIRES_TINT),
-                ("lossless", lossless, LOSSLESS_TINT),
-            ] {
+            for (badge, text) in [("hi-res", hires), ("lossless", lossless)] {
                 for (surface, background) in surfaces {
-                    let ratio = contrast(text, mix(text, background, tint));
+                    let ratio = contrast(text, background);
                     if ratio < TEXT {
                         failures.push(format!(
                             "{}/{scheme}: {badge} badge on the {surface} is {ratio:.2}, needs {TEXT}",
@@ -256,6 +248,21 @@ fn pairs(p: &Palette) -> Vec<(&'static str, &str, &str, f64)> {
             pairs.push(("accent graphics", accent, bg, GRAPHICS));
         }
     }
+    // The playing song's title is text wherever a list of songs is shown.
+    if let Some(playing) = p.playing.as_deref() {
+        let surfaces = [
+            ("playing on the window", p.window_bg.as_deref()),
+            ("playing on the view", p.view_bg.as_deref()),
+            ("playing on a card", p.card_bg.as_deref()),
+            ("playing on the sidebar", p.sidebar_bg.as_deref()),
+            ("playing on the player bar", p.player_bar_bg.as_deref()),
+        ];
+        for (label, bg) in surfaces {
+            if let Some(bg) = bg {
+                pairs.push((label, playing, bg, TEXT));
+            }
+        }
+    }
     if let Some(destructive) = p.destructive.as_deref() {
         pairs.push(("destructive button", WHITE, destructive, TEXT));
     }
@@ -294,6 +301,7 @@ fn merged(shared: &Palette, overrides: &Palette) -> Palette {
         player_bar_fg: pick(&overrides.player_bar_fg, &shared.player_bar_fg),
         border: pick(&overrides.border, &shared.border),
         hires_badge: pick(&overrides.hires_badge, &shared.hires_badge),
+        playing: pick(&overrides.playing, &shared.playing),
     }
 }
 
@@ -306,11 +314,6 @@ fn rgb(hex: &str) -> Rgb {
         let value = u8::from_str_radix(&digits[index..index + 2], 16).expect("hex digits");
         f64::from(value) / 255.0
     })
-}
-
-/// `color` at `amount` over `background`, as a translucent `color-mix(in srgb, …)` gives.
-fn mix(color: Rgb, background: Rgb, amount: f64) -> Rgb {
-    [0, 1, 2].map(|channel| color[channel] * amount + background[channel] * (1.0 - amount))
 }
 
 /// WCAG 2 contrast ratio between two opaque colours.

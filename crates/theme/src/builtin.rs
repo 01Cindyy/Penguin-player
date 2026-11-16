@@ -28,21 +28,24 @@ macro_rules! builtin {
 
 /// In display order: the default theme first, then the app's own themes, then
 /// popular palettes alphabetically.
-const BUILTIN_THEMES: [BuiltinTheme; 14] = [
+const BUILTIN_THEMES: [BuiltinTheme; 17] = [
+    builtin!("penguin"),
     builtin!("adwaita"),
     builtin!("midnight"),
     builtin!("rice", with_stylesheet),
     builtin!("frost"),
-    builtin!("catppuccin"),
-    builtin!("dracula"),
-    builtin!("everforest"),
-    builtin!("gruvbox"),
-    builtin!("kanagawa"),
-    builtin!("nord"),
-    builtin!("one-dark"),
-    builtin!("rose-pine"),
-    builtin!("solarized"),
-    builtin!("tokyo-night"),
+    builtin!("ayu", with_stylesheet),
+    builtin!("catppuccin", with_stylesheet),
+    builtin!("dracula", with_stylesheet),
+    builtin!("everforest", with_stylesheet),
+    builtin!("gruvbox", with_stylesheet),
+    builtin!("kanagawa", with_stylesheet),
+    builtin!("monokai", with_stylesheet),
+    builtin!("nord", with_stylesheet),
+    builtin!("one-dark", with_stylesheet),
+    builtin!("rose-pine", with_stylesheet),
+    builtin!("solarized", with_stylesheet),
+    builtin!("tokyo-night", with_stylesheet),
 ];
 
 /// Themes shipped with the app; the first is the default.
@@ -83,22 +86,28 @@ mod tests {
     fn default_theme_comes_first() {
         let themes = builtin_themes();
         assert_eq!(themes[0].id, DEFAULT_THEME_ID);
-        assert_eq!(themes[0].id, "adwaita");
-        assert_eq!(themes[0].manifest.name, "Adwaita");
+        assert_eq!(themes[0].id, "penguin");
+        assert_eq!(themes[0].manifest.name, "Penguin");
         let ids: Vec<&str> = themes.iter().map(|theme| theme.id.as_str()).collect();
-        assert_eq!(&ids[..4], ["adwaita", "midnight", "rice", "frost"]);
-        let mut popular = ids[4..].to_vec();
+        assert_eq!(
+            &ids[..5],
+            ["penguin", "adwaita", "midnight", "rice", "frost"]
+        );
+        let mut popular = ids[5..].to_vec();
         popular.sort_unstable();
         assert_eq!(
             popular,
-            ids[4..],
+            ids[5..],
             "popular palettes are listed alphabetically"
         );
     }
 
     #[test]
     fn adwaita_keeps_system_colours() {
-        let adwaita = &builtin_themes()[0];
+        let adwaita = builtin_themes()
+            .into_iter()
+            .find(|theme| theme.id == "adwaita")
+            .unwrap();
         let manifest = &adwaita.manifest;
         assert_eq!(manifest.scheme, ThemeScheme::Any);
         assert_eq!(manifest.colors, Default::default());
@@ -114,7 +123,11 @@ mod tests {
 
     #[test]
     fn themes_have_a_palette_for_every_scheme_they_allow() {
-        for theme in &builtin_themes()[1..] {
+        // Adwaita keeps libadwaita's own colours, so it has no palette.
+        for theme in builtin_themes()
+            .iter()
+            .filter(|theme| theme.id != "adwaita")
+        {
             let css = theme.to_css();
             let schemes: &[&str] = match theme.scheme() {
                 ThemeScheme::Any => &["light", "dark"],

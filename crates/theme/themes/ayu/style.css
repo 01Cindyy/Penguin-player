@@ -1,0 +1,27 @@
+/* Ayu: every format on the Formats page in one of the palette's own colours,
+ * lightened or darkened only where it would not show against the theme's surfaces. */
+
+@media (prefers-color-scheme: dark) {
+  :root { --mp-codec-tile-fg-color: #0d1017; }
+  .mp-codec-flac { --mp-codec-color: #39bae6; }
+  .mp-codec-alac { --mp-codec-color: #e18cbc; }
+  .mp-codec-wav { --mp-codec-color: #ffb454; }
+  .mp-codec-aiff { --mp-codec-color: #95e6cb; }
+  .mp-codec-mp3 { --mp-codec-color: #ff8f40; }
+  .mp-codec-aac { --mp-codec-color: #aad94c; }
+  .mp-codec-opus { --mp-codec-color: #d2a6ff; }
+  .mp-codec-vorbis { --mp-codec-color: #f07178; }
+  .mp-codec-unknown { --mp-codec-color: #6c7380; }
+}
+
+@media (prefers-color-scheme: light) {
+  .mp-codec-flac { --mp-codec-color: #2e95dd; }
+  .mp-codec-alac { --mp-codec-color: #c9759d; }
+  .mp-codec-wav { --mp-codec-color: #c38200; }
+  .mp-codec-aiff { --mp-codec-color: #26a27d; }
+  .mp-codec-mp3 { --mp-codec-color: #dd721a; }
+  .mp-codec-aac { --mp-codec-color: #719c00; }
+  .mp-codec-opus { --mp-codec-color: #a37acc; }
+  .mp-codec-vorbis { --mp-codec-color: #e56768; }
+  .mp-codec-unknown { --mp-codec-color: #899098; }
+}

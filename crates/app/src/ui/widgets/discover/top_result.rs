@@ -179,7 +179,7 @@ impl TopResultCard {
         imp.details.add_css_class("dim-label");
         imp.details.add_css_class("mp-top-result-details");
 
-        let meta = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let meta = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         meta.append(&imp.kind);
         meta.append(&imp.details);
         imp.text.set_orientation(gtk::Orientation::Vertical);

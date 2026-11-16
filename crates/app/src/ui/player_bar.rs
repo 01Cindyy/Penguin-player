@@ -623,7 +623,7 @@ fn extras(ctx: &Rc<AppContext>) -> Extras {
     );
     let volume = VolumeControls::new(ctx);
     let root = gtk::Box::builder()
-        .spacing(4)
+        .spacing(6)
         .halign(gtk::Align::End)
         .valign(gtk::Align::Center)
         .css_classes(["mp-player-extras"])

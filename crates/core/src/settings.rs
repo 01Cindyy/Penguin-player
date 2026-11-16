@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::files::write_atomically;
 use crate::queue::RepeatMode;
 
-pub const DEFAULT_THEME_ID: &str = "adwaita";
+pub const DEFAULT_THEME_ID: &str = "penguin";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -18,14 +18,16 @@ pub enum ColorSchemePreference {
     Dark,
 }
 
-/// How rounded the interface is. `Round` keeps the active theme's own corner radii;
-/// the other two override them for every theme.
+/// How rounded the interface is. `Round` keeps the active theme's own corner radii,
+/// pills and circles included; the other two override them for every theme. `Slight`,
+/// the default, sizes each radius by what it rounds: controls, then cards, then the
+/// window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CornerStyle {
     Square,
-    Slight,
     #[default]
+    Slight,
     Round,
 }
 
@@ -199,7 +201,7 @@ impl Default for Settings {
             watch_music_folder: true,
             theme: DEFAULT_THEME_ID.to_owned(),
             color_scheme: ColorSchemePreference::System,
-            corners: CornerStyle::Round,
+            corners: CornerStyle::default(),
             transparency: Transparency::default(),
             defined_edges: false,
             quality_details: false,

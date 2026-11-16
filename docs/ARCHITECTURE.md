@@ -357,8 +357,8 @@ Stylesheets are layered (later wins):
 
 4. The user's appearance options from `mp_theme::Theme::appearance_css(Appearance)` at
    `STYLE_PROVIDER_PRIORITY_APPLICATION + 2`: the corner style (Square and Slight set
-   every radius variable and libadwaita's own widget radii; Round adds nothing) and
-   transparency (translucent `--mp-window-bg-color`, `--mp-panel-bg-color` and
+   every radius variable and libadwaita's own widget radii; Round adds nothing; Slight
+   is the default) and transparency (translucent `--mp-window-bg-color`, `--mp-panel-bg-color` and
    `--mp-player-bar-surface`, with the content views made transparent), and defined
    edges (lines in `--mp-edge-color` on the sidebar, queue panel and player bar, and
    shadows on the bottom bar and the page's `mp-edge-shade` strips). The theme's
@@ -388,9 +388,10 @@ Colours in the app's stylesheets always come from variables (libadwaita's or the
 | `--mp-player-bar-bg-color` | Now-playing bar background | `var(--headerbar-bg-color)` |
 | `--mp-player-bar-fg-color` | Now-playing bar text | `var(--window-fg-color)` |
 | `--mp-cover-shadow` | `box-shadow` under covers and artist images | soft drop shadow |
-| `--mp-cover-hover-shadow` | `box-shadow` under a card's art while hovered | deeper drop shadow |
-| `--mp-hires-badge-color` | Hi-Res badge and meter | `var(--warning-color)` |
-| `--mp-lossless-badge-color` | Lossless badge and meter | `var(--accent-color)` |
+| `--mp-ease` | The curve every transition moves on | `cubic-bezier(0.22, 1, 0.36, 1)` |
+| `--mp-hires-badge-color` | Hi-Res badge | `var(--warning-color)` |
+| `--mp-playing-color` | What is playing: its title, equaliser, the visualiser and the seek bar's progress | unset; the accent is used |
+| `--mp-lossless-badge-color` | Lossless badge | `var(--accent-color)` |
 | `--mp-codec-color` | A format's identity colour, set by each `.mp-codec-<id>` class | libadwaita palette colours |
 
 ### Stable CSS classes
@@ -412,7 +413,7 @@ docs/themes.md lists them for theme authors.
 | Track lists | `mp-track-list`, `mp-track-table`, `mp-track-title`, `mp-track-artist`, `mp-track-album`, `mp-track-number`, `mp-track-duration`, `mp-track-quality`, `mp-disc-header`, `mp-playing` (the current track's row) |
 | Badges | `mp-format-badge` (+ `mp-lossless`, `mp-hires`), `mp-quality-badge` (album page) |
 | Search | `mp-search-overview`, `mp-top-result`, `mp-top-result-title`, `mp-top-result-play`, `mp-kind-pill`, `mp-song-rows`, `mp-song-row` |
-| Formats | `mp-format-overview`, `mp-composition-bar`, `mp-composition-segment`, `mp-quality-tier`, `mp-meter` (+ `mp-hires`, `mp-lossless`, `mp-lossy`), `mp-format-card`, `mp-codec-tile`, `mp-codec-dot`, `mp-codec-<id>` (`flac`, `alac`, `wav`, `aiff`, `mp3`, `aac`, `opus`, `vorbis`, `unknown`) |
+| Formats | `mp-format-overview`, `mp-composition-bar`, `mp-composition-segment`, `mp-quality-tier`, `mp-format-card`, `mp-codec-tile`, `mp-codec-dot`, `mp-codec-<id>` (`flac`, `alac`, `wav`, `aiff`, `mp3`, `aac`, `opus`, `vorbis`, `unknown`) |
 | Queue | `mp-queue-panel`, `mp-now-playing-card`, `mp-queue-list`, `mp-queue-row`, `mp-queue-remove`, `mp-queue-clear` |
 | Playlists | `mp-missing-entries`, `mp-missing-row`, `mp-drop-before`, `mp-drop-after` (drop markers), `mp-drag-icon` |
 | Favourites | `mp-favourite-button` (a song's star; + `mp-favourite` while the song is one, `mp-reveal-on-hover` in lists) |

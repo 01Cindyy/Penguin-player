@@ -13,7 +13,7 @@
 
 button.mp-queue-clear,
 button.mp-missing-remove-all {
-  min-height: 28px;
+  min-height: 30px;
   padding: 0 12px;
   border-radius: var(--mp-pill-radius);
   font-size: 90%;
@@ -42,7 +42,7 @@ button.mp-missing-remove-all {
 }
 
 .mp-missing-toggle image {
-  transition: -gtk-icon-transform 200ms ease-out;
+  transition: -gtk-icon-transform 200ms var(--mp-ease);
 }
 
 .mp-missing-toggle:checked image {
@@ -96,11 +96,11 @@ listview.mp-queue-list > row.mp-drop-after {
 /* The pill that follows the pointer while songs are dragged. */
 .mp-drag-icon {
   margin: 12px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: var(--mp-pill-radius);
   background-color: var(--accent-bg-color);
   color: var(--accent-fg-color);
-  font-weight: 600;
+  font-weight: 500;
   box-shadow: var(--mp-floating-shadow);
 }
 
@@ -155,9 +155,8 @@ listview.mp-queue-list {
 /* As in reorderable track lists, the row's padding sits inside its content. */
 listview.mp-queue-list > row {
   padding: 0;
-  margin-bottom: 1px;
   border-radius: var(--mp-small-radius);
-  transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: background-color 150ms var(--mp-ease), box-shadow 150ms var(--mp-ease);
 }
 
 .mp-queue-row {
@@ -168,12 +167,12 @@ listview.mp-queue-list > row {
  * keyboard focus, or the button itself has the focus. */
 .mp-queue-row .mp-track-duration,
 .mp-queue-remove {
-  transition: opacity 150ms ease-out;
+  transition: opacity 150ms var(--mp-ease);
 }
 
 .mp-queue-remove {
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 30px;
+  min-height: 30px;
   padding: 0;
   opacity: 0;
 }

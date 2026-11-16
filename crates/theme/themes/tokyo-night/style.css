@@ -1,0 +1,27 @@
+/* Tokyo Night: every format on the Formats page in one of the palette's own colours,
+ * lightened or darkened only where it would not show against the theme's surfaces. */
+
+@media (prefers-color-scheme: dark) {
+  :root { --mp-codec-tile-fg-color: #1a1b26; }
+  .mp-codec-flac { --mp-codec-color: #7aa2f7; }
+  .mp-codec-alac { --mp-codec-color: #d988c2; }
+  .mp-codec-wav { --mp-codec-color: #e0af68; }
+  .mp-codec-aiff { --mp-codec-color: #73daca; }
+  .mp-codec-mp3 { --mp-codec-color: #ff9e64; }
+  .mp-codec-aac { --mp-codec-color: #9ece6a; }
+  .mp-codec-opus { --mp-codec-color: #bb9af7; }
+  .mp-codec-vorbis { --mp-codec-color: #f7768e; }
+  .mp-codec-unknown { --mp-codec-color: #68719d; }
+}
+
+@media (prefers-color-scheme: light) {
+  .mp-codec-flac { --mp-codec-color: #2e7de9; }
+  .mp-codec-alac { --mp-codec-color: #c63fab; }
+  .mp-codec-wav { --mp-codec-color: #8c6c3e; }
+  .mp-codec-aiff { --mp-codec-color: #118c74; }
+  .mp-codec-mp3 { --mp-codec-color: #b15c00; }
+  .mp-codec-aac { --mp-codec-color: #587539; }
+  .mp-codec-opus { --mp-codec-color: #9854f1; }
+  .mp-codec-vorbis { --mp-codec-color: #f42864; }
+  .mp-codec-unknown { --mp-codec-color: #767ea6; }
+}

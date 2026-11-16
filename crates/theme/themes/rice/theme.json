@@ -1,7 +1,7 @@
 {
   "name": "Soft Rice",
   "author": "Penguin Player",
-  "description": "Muted lavender and teal on deep charcoal, with a floating now-playing bar and soft glows.",
+  "description": "Muted lavender on deep charcoal, with teal for what is playing and a floating now-playing bar.",
   "version": "1.0",
   "scheme": "any",
   "colors": {
@@ -29,7 +29,8 @@
     "player_bar_bg": "#ffffff",
     "player_bar_fg": "#2b2836",
     "border": "rgba(43, 40, 54, 0.12)",
-    "hires_badge": "#16685e"
+    "hires_badge": "#7a5a12",
+    "playing": "#19756a"
   },
   "dark": {
     "accent": "#b7a3e6",
@@ -51,14 +52,15 @@
     "player_bar_bg": "#23222b",
     "player_bar_fg": "#efeaf6",
     "border": "rgba(231, 226, 239, 0.10)",
-    "hires_badge": "#7dd3c4"
+    "hires_badge": "#e5b567",
+    "playing": "#7dd3c4"
   },
   "shape": {
     "window_radius": 18,
     "panel_radius": 18,
     "cover_radius": 14,
     "button_radius": 999,
-    "spacing": 14
+    "spacing": 12
   },
   "effects": {
     "cover_shadow": 0.85

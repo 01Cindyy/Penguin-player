@@ -336,8 +336,7 @@ impl MainWindow {
             move |_| window.go_back()
         ));
 
-        imp.search_entry
-            .set_placeholder_text(Some("Search songs, albums and artists"));
+        imp.search_entry.set_placeholder_text(Some("Search"));
         imp.search_entry.set_hexpand(true);
         imp.search_entry.add_css_class("mp-search-entry");
         imp.search_entry.set_key_capture_widget(Some(self));

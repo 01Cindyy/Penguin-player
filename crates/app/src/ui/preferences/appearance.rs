@@ -487,7 +487,7 @@ fn theme_card(theme: Theme, (dark, accent): (bool, gtk::gdk::RGBA)) -> ThemeCard
 
     let card = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
-        .spacing(4)
+        .spacing(6)
         .css_classes(["mp-theme-card"])
         .build();
     card.append(&overlay);

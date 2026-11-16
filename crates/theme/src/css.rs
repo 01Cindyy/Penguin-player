@@ -12,7 +12,7 @@ type PaletteField = fn(&Palette) -> &Option<String>;
 
 /// The CSS variables each palette key sets. Backdrop and secondary variants follow
 /// their main colour so unfocused windows and secondary sidebars match the theme.
-const PALETTE_VARIABLES: [(&str, PaletteField, &[&str]); 23] = [
+const PALETTE_VARIABLES: [(&str, PaletteField, &[&str]); 24] = [
     ("accent", |p| &p.accent, &["--accent-bg-color"]),
     ("accent_fg", |p| &p.accent_fg, &["--accent-fg-color"]),
     (
@@ -77,6 +77,7 @@ const PALETTE_VARIABLES: [(&str, PaletteField, &[&str]); 23] = [
         |p| &p.hires_badge,
         &["--mp-hires-badge-color"],
     ),
+    ("playing", |p| &p.playing, &["--mp-playing-color"]),
 ];
 
 /// libadwaita zeroes the window radius for these window states; the theme's own

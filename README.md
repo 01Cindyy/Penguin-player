@@ -4,9 +4,9 @@
 
 # Penguin Player
 
-**A clean, fast and beautiful offline music player, built for Linux and Windows.**
+**Your music library, offline and in full quality, on Linux and Windows.**
 
-A native music player written in Rust, for playing your music files offline. It's for anyone who wants an aesthetically pleasing but functional music player.
+A native player written in Rust for the music files you already have. Point it at a folder to browse, search and play your library, with nothing going online.
 
 [![Latest release](https://img.shields.io/github/v/release/01Cindyy/Penguin-player)](https://github.com/01Cindyy/Penguin-player/releases/latest)
 [![AUR](https://img.shields.io/aur/version/penguin-player)](https://aur.archlinux.org/packages/penguin-player)
@@ -31,7 +31,7 @@ A native music player written in Rust, for playing your music files offline. It'
   covers or an image of your own.
 - **Visualiser**: bars that move with the music, in your theme's colour. Or use the song's
   waveform as the seek bar.
-- **Themes**: fourteen built in, plus your own and a Pywal theme that follows your
+- **Themes**: seventeen built in, plus your own and a Pywal theme that follows your
   wallpaper (see [pywal16](https://github.com/eylles/pywal16) for details); with extra
   options for corners, the visualiser and a translucent window.
 - **Plugins** in Lua, sandboxed. Two come with the app: Online Lyrics, which finds lyrics

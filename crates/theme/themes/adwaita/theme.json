@@ -9,7 +9,7 @@
     "panel_radius": 14,
     "cover_radius": 10,
     "button_radius": 999,
-    "spacing": 14
+    "spacing": 12
   },
   "effects": {
     "cover_shadow": 0.6

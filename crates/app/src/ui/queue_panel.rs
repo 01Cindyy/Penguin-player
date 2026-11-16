@@ -356,7 +356,7 @@ fn nothing_up_next() -> gtk::Widget {
         .build();
     let content = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
-        .spacing(4)
+        .spacing(6)
         .valign(gtk::Align::Start)
         .css_classes(["mp-queue-nothing"])
         .build();

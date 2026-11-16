@@ -1,0 +1,27 @@
+/* Gruvbox: every format on the Formats page in one of the palette's own colours,
+ * lightened or darkened only where it would not show against the theme's surfaces. */
+
+@media (prefers-color-scheme: dark) {
+  :root { --mp-codec-tile-fg-color: #282828; }
+  .mp-codec-flac { --mp-codec-color: #83a598; }
+  .mp-codec-alac { --mp-codec-color: #d3869b; }
+  .mp-codec-wav { --mp-codec-color: #fabd2f; }
+  .mp-codec-aiff { --mp-codec-color: #8ec07c; }
+  .mp-codec-mp3 { --mp-codec-color: #fe8019; }
+  .mp-codec-aac { --mp-codec-color: #b8bb26; }
+  .mp-codec-opus { --mp-codec-color: #ab969a; }
+  .mp-codec-vorbis { --mp-codec-color: #fb4934; }
+  .mp-codec-unknown { --mp-codec-color: #928374; }
+}
+
+@media (prefers-color-scheme: light) {
+  .mp-codec-flac { --mp-codec-color: #076678; }
+  .mp-codec-alac { --mp-codec-color: #8f3f71; }
+  .mp-codec-wav { --mp-codec-color: #b57614; }
+  .mp-codec-aiff { --mp-codec-color: #427b58; }
+  .mp-codec-mp3 { --mp-codec-color: #af3a03; }
+  .mp-codec-aac { --mp-codec-color: #79740e; }
+  .mp-codec-opus { --mp-codec-color: #4b5274; }
+  .mp-codec-vorbis { --mp-codec-color: #9d0006; }
+  .mp-codec-unknown { --mp-codec-color: #7c6f64; }
+}

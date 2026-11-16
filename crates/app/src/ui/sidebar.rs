@@ -533,7 +533,7 @@ fn footer(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> gtk::Widget {
         .build();
     set_tooltip(&preferences, &format!("Preferences ({})", primary(",")));
 
-    let footer = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let footer = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     footer.add_css_class("mp-sidebar-footer");
     footer.append(&spinner);
     footer.append(&status);

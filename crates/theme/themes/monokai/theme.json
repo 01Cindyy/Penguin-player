@@ -1,0 +1,43 @@
+{
+  "name": "Monokai",
+  "author": "Penguin Player",
+  "description": "Wimer Hazenberg's Monokai: lime and pink on warm charcoal.",
+  "version": "1.0",
+  "scheme": "dark",
+  "dark": {
+    "accent": "#a6e22e",
+    "accent_fg": "#272822",
+    "destructive": "#c4265a",
+    "success": "#4d7a14",
+    "warning": "#e6db74",
+    "window_bg": "#272822",
+    "window_fg": "#f8f8f2",
+    "view_bg": "#272822",
+    "view_fg": "#f8f8f2",
+    "sidebar_bg": "#1e1f1c",
+    "sidebar_fg": "#f8f8f2",
+    "headerbar_bg": "#272822",
+    "headerbar_fg": "#f8f8f2",
+    "card_bg": "#33342d",
+    "card_fg": "#f8f8f2",
+    "popover_bg": "#36372f",
+    "popover_fg": "#f8f8f2",
+    "dialog_bg": "#2d2e27",
+    "dialog_fg": "#f8f8f2",
+    "player_bar_bg": "#1e1f1c",
+    "player_bar_fg": "#f8f8f2",
+    "border": "rgba(248, 248, 242, 0.10)",
+    "hires_badge": "#e6db74",
+    "playing": "#ff68a1"
+  },
+  "shape": {
+    "window_radius": 16,
+    "panel_radius": 14,
+    "cover_radius": 10,
+    "button_radius": 999,
+    "spacing": 12
+  },
+  "effects": {
+    "cover_shadow": 0.7
+  }
+}

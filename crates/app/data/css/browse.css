@@ -1,11 +1,6 @@
 /* Albums, album, artists and artist pages.
  * Appended after style.css, so it can use every variable and class defined there. */
 
-:root {
-  /* Under a card's art while the pointer lifts it. */
-  --mp-cover-hover-shadow: 0 10px 24px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
 /* Card grids
  *
  * Cards fill their grid column. The grid is inset so that the art lines up with the
@@ -46,12 +41,12 @@ button.mp-card-button:focus:focus-visible {
 
 .mp-album-card,
 .mp-artist-card {
-  padding: 6px 6px 10px;
+  padding: 6px 6px 12px;
   border-radius: var(--mp-panel-radius);
   outline: 0 solid transparent;
   outline-offset: 2px;
-  transition: background-color 200ms ease-out, outline-color 200ms ease-out,
-    outline-offset 200ms ease-out;
+  transition: background-color 200ms var(--mp-ease), outline-color 200ms var(--mp-ease),
+    outline-offset 200ms var(--mp-ease);
 }
 
 .mp-album-card:hover,
@@ -74,37 +69,30 @@ button.mp-card-button:focus:focus-visible > .mp-artist-card {
   outline-offset: -2px;
 }
 
-/* The art lifts a little under the pointer and settles when pressed. */
+/* The art stays put under the pointer (the card's surface answers instead) and
+ * settles a little when pressed. */
 .mp-card-art {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .mp-card-art .mp-cover,
 .mp-card-art avatar {
-  transition: transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    box-shadow 250ms ease-out;
-}
-
-.mp-album-card:hover .mp-card-art .mp-cover,
-.mp-artist-card:hover .mp-card-art .mp-cover,
-.mp-artist-card:hover .mp-card-art avatar {
-  transform: translateY(-3px);
-  box-shadow: var(--mp-cover-hover-shadow);
+  transition: transform 150ms var(--mp-ease);
 }
 
 gridview.mp-card-grid > child:active .mp-card-art .mp-cover,
 gridview.mp-card-grid > child:active .mp-card-art avatar,
 button.mp-card-button:active .mp-card-art .mp-cover,
 button.mp-card-button:active .mp-card-art avatar {
-  transform: translateY(-1px) scale(0.985);
+  transform: scale(0.985);
 }
 
 /* The play button fades in over the art while the card is hovered or has the keyboard
  * focus. */
 button.mp-card-play {
-  min-width: 44px;
-  min-height: 44px;
-  margin: 10px;
+  min-width: 42px;
+  min-height: 42px;
+  margin: 12px;
   padding: 0;
   border-radius: var(--mp-button-radius);
   background-color: var(--accent-bg-color);
@@ -112,8 +100,8 @@ button.mp-card-play {
   box-shadow: var(--mp-floating-shadow);
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 200ms ease-out, transform 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    background-image 150ms ease-out;
+  transition: opacity 200ms var(--mp-ease), transform 200ms var(--mp-ease),
+    background-image 150ms var(--mp-ease);
 }
 
 .mp-album-card:hover button.mp-card-play,
@@ -128,13 +116,12 @@ button.mp-card-play:focus:focus-visible {
 .mp-album-card:hover button.mp-card-play:hover,
 .mp-artist-card:hover button.mp-card-play:hover {
   background-image: image(color-mix(in srgb, currentColor 12%, transparent));
-  transform: scale(1.06);
 }
 
 .mp-album-card:hover button.mp-card-play:active,
 .mp-artist-card:hover button.mp-card-play:active {
   background-image: image(color-mix(in srgb, currentColor 20%, transparent));
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .mp-album-card .mp-album-title,
@@ -144,7 +131,7 @@ button.mp-card-play:focus:focus-visible {
 
 .mp-album-title,
 .mp-artist-name {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .mp-album-artist,
@@ -198,7 +185,7 @@ menubutton.mp-sort-button > button {
 
 .mp-artist-link label {
   font-size: 115%;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .mp-quality-badges {
@@ -206,17 +193,15 @@ menubutton.mp-sort-button > button {
 }
 
 .mp-format-badge.mp-quality-badge {
-  padding: 2px 8px;
-  border-radius: calc(var(--mp-small-radius) * 2 / 3);
-  font-size: 78%;
-  letter-spacing: 0.3px;
+  padding: 3px 9px;
+  font-size: 12px;
 }
 
 /* Album tracks, grouped by disc */
 
 .mp-album-tracks columnview.mp-track-table > listview > header {
   padding-top: 18px;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
 }
 
 .mp-disc-header {

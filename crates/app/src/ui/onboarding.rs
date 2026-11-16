@@ -5,7 +5,6 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::glib;
-use mp_core::APP_NAME;
 
 use crate::context::AppContext;
 use crate::ui::{dialogs, icons};
@@ -42,7 +41,7 @@ pub fn build(ctx: &Rc<AppContext>, done: impl Fn() + 'static) -> gtk::Widget {
 
     let status = adw::StatusPage::builder()
         .icon_name(icons::MUSIC_FOLDER)
-        .title(format!("Welcome to {APP_NAME}"))
+        .title("Add Your Music")
         .description(
             "Choose the folder that holds your music. Everything stays on this computer, \
              and you can change the folder at any time in Preferences.",

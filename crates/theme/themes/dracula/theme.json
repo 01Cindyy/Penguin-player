@@ -27,14 +27,15 @@
     "player_bar_bg": "#21222c",
     "player_bar_fg": "#f8f8f2",
     "border": "rgba(248, 248, 242, 0.10)",
-    "hires_badge": "#f1fa8c"
+    "hires_badge": "#f1fa8c",
+    "playing": "#ff79c6"
   },
   "shape": {
     "window_radius": 16,
     "panel_radius": 14,
     "cover_radius": 10,
     "button_radius": 999,
-    "spacing": 14
+    "spacing": 12
   },
   "effects": {
     "cover_shadow": 0.7

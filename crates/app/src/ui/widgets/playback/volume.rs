@@ -48,7 +48,7 @@ glib::wrapper! {
 impl VolumeControls {
     pub fn new(ctx: &Rc<AppContext>) -> Self {
         let controls: Self = glib::Object::builder()
-            .property("spacing", 4)
+            .property("spacing", 6)
             .property("valign", gtk::Align::Center)
             .build();
         let parts = Parts {

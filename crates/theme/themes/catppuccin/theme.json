@@ -27,7 +27,8 @@
     "hires_badge": "#7a4f0c",
     "destructive": "#d20f39",
     "success": "#2d7a1f",
-    "warning": "#df8e1d"
+    "warning": "#df8e1d",
+    "playing": "#097800"
   },
   "dark": {
     "accent": "#cba6f7",
@@ -52,14 +53,15 @@
     "hires_badge": "#f9e2af",
     "destructive": "#a6344f",
     "success": "#2f7a45",
-    "warning": "#f9e2af"
+    "warning": "#f9e2af",
+    "playing": "#a6e3a1"
   },
   "shape": {
     "window_radius": 16,
     "panel_radius": 14,
     "cover_radius": 10,
     "button_radius": 999,
-    "spacing": 14
+    "spacing": 12
   },
   "effects": {
     "cover_shadow": 0.7

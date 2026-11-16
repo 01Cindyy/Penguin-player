@@ -50,6 +50,8 @@ pub struct PreviewColors {
     pub card_bg: gdk::RGBA,
     pub player_bar_bg: gdk::RGBA,
     pub accent: gdk::RGBA,
+    /// The colour of what is playing: the theme's own, or its accent.
+    pub playing: gdk::RGBA,
 }
 
 impl PreviewColors {
@@ -79,6 +81,7 @@ impl PreviewColors {
 
         let headerbar_bg =
             pick(|p| &p.headerbar_bg).unwrap_or_else(|| default(defaults.headerbar_bg));
+        let accent = pick(|p| &p.accent).unwrap_or(system_accent);
         Self {
             window_bg: pick(|p| &p.window_bg).unwrap_or_else(|| default(defaults.window_bg)),
             window_fg: pick(|p| &p.window_fg).unwrap_or_else(|| default(defaults.window_fg)),
@@ -86,7 +89,8 @@ impl PreviewColors {
             card_bg: pick(|p| &p.card_bg).unwrap_or_else(|| default(defaults.card_bg)),
             // The player bar follows the header bar unless the theme sets it.
             player_bar_bg: pick(|p| &p.player_bar_bg).unwrap_or(headerbar_bg),
-            accent: pick(|p| &p.accent).unwrap_or(system_accent),
+            accent,
+            playing: pick(|p| &p.playing).unwrap_or(accent),
         }
     }
 }
@@ -266,7 +270,7 @@ impl Painter<'_> {
             self.ink(0.15),
         );
         let progress = rect(track_x, track_y, track_width * 0.4, 3.0);
-        self.fill(progress, 1.5, self.colors.accent);
+        self.fill(progress, 1.5, self.colors.playing);
     }
 }
 
@@ -276,12 +280,21 @@ mod tests {
 
     use super::*;
 
+    /// The built-in theme that sets no colours of its own.
+    fn adwaita() -> mp_theme::Theme {
+        builtin_themes()
+            .into_iter()
+            .find(|theme| theme.id == "adwaita")
+            .expect("Adwaita is built in")
+    }
+
     #[test]
     fn unset_colours_fall_back_to_adwaita_and_the_system_accent() {
         let accent = gdk::RGBA::new(1.0, 0.0, 0.0, 1.0);
-        let adwaita = &builtin_themes()[0];
+        let adwaita = &adwaita();
         let light = PreviewColors::of(adwaita, false, accent);
         assert_eq!(light.accent, accent);
+        assert_eq!(light.playing, accent);
         assert_eq!(light.window_bg, gdk::RGBA::parse("#fafafb").unwrap());
         let dark = PreviewColors::of(adwaita, true, accent);
         assert_eq!(dark.window_bg, gdk::RGBA::parse("#222226").unwrap());
@@ -290,7 +303,7 @@ mod tests {
 
     #[test]
     fn scheme_palettes_override_shared_colours() {
-        let mut theme = builtin_themes()[0].clone();
+        let mut theme = adwaita();
         theme.manifest.colors.accent = Some("#00ff00".into());
         theme.manifest.dark.accent = Some("#0000ff".into());
         theme.manifest.light.window_bg = Some("not a colour".into());

@@ -63,7 +63,7 @@ glib::wrapper! {
 impl SeekBar {
     pub fn new(ctx: &Rc<AppContext>) -> Self {
         let bar: Self = glib::Object::builder()
-            .property("column-spacing", 10)
+            .property("column-spacing", 12)
             .build();
         bar.add_css_class("mp-seek-row");
         let time_label = |xalign: f32| {
@@ -147,7 +147,7 @@ impl SeekBar {
         let parts = self.parts();
         parts.elapsed.set_xalign(0.0);
         parts.duration.set_xalign(1.0);
-        self.set_column_spacing(4);
+        self.set_column_spacing(6);
         let times = gtk::SizeGroup::new(gtk::SizeGroupMode::Horizontal);
         for time in [&parts.elapsed, &parts.duration] {
             time.set_width_chars(4);

@@ -2,8 +2,11 @@
 //! the user's wallpaper. pywal rewrites `colors.json` in its cache folder every time it
 //! runs, so watching that file keeps the theme in step with the wallpaper.
 //!
-//! Wallpapers can give any colours at all, so every colour is nudged towards white or
-//! black until it is readable where the app uses it (WCAG AA, as for the built-in themes).
+//! The background is taken a little deeper than pywal's and the text a little further
+//! from it, so the theme has more contrast than the terminal colours it comes from.
+//! Wallpapers can give any colours at all, so every colour is then nudged towards white
+//! or black until it is readable where the app uses it (WCAG AA, as for the built-in
+//! themes).
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -26,6 +29,11 @@ const MAX_COLORS_BYTES: u64 = 64 * 1024;
 const TEXT_CONTRAST: f64 = 4.5;
 const GRAPHIC_CONTRAST: f64 = 3.0;
 
+/// How far the background is taken towards black (towards white for a light palette),
+/// and the text the other way, before anything else is worked out from them.
+const DEEPEN_BACKGROUND: f64 = 0.25;
+const LIFT_TEXT: f64 = 0.3;
+
 /// How far each surface is mixed from the background towards the text colour.
 const SIDEBAR_MIX: f64 = 0.05;
 const CARD_MIX: f64 = 0.08;
@@ -35,6 +43,11 @@ const POPOVER_MIX: f64 = 0.10;
 /// `.mp-format-badge` style.
 const HIRES_TINT: f64 = 0.12;
 const LOSSLESS_TINT: f64 = 0.10;
+
+/// A wallpaper colour may mark what is playing if it is this colourful, and this many
+/// degrees of hue away from the accent, so it reads as a colour of its own.
+const MIN_PLAYING_CHROMA: f64 = 0.2;
+const MIN_PLAYING_HUE_DISTANCE: f64 = 45.0;
 
 /// The colours pywal generates from one wallpaper (`color0` to `color15`).
 #[derive(Deserialize)]
@@ -125,6 +138,9 @@ pub fn pywal_manifest(json: &str) -> Result<ThemeManifest, String> {
 
 fn palette(background: Rgb, foreground: Rgb, accents: &[Rgb], dark: bool) -> Palette {
     let away = if dark { WHITE } else { BLACK };
+    let deeper = if dark { BLACK } else { WHITE };
+    let background = background.mix(deeper, DEEPEN_BACKGROUND);
+    let foreground = foreground.mix(away, LIFT_TEXT);
     let sidebar = background.mix(foreground, SIDEBAR_MIX);
     let card = background.mix(foreground, CARD_MIX);
     let popover = background.mix(foreground, POPOVER_MIX);
@@ -196,6 +212,20 @@ fn palette(background: Rgb, foreground: Rgb, accents: &[Rgb], dark: bool) -> Pal
     palette.accent = Some(accent.hex());
     palette.accent_fg = Some(accent_fg.hex());
     palette.hires_badge = Some(badge.hex());
+
+    // What is playing gets the wallpaper's colour furthest in hue from the accent, where
+    // there is one; otherwise it stays in the accent.
+    let playing = accents
+        .iter()
+        .copied()
+        .filter(|color| color.chroma() >= MIN_PLAYING_CHROMA)
+        .map(|color| (color.hue_distance(vivid), color))
+        .filter(|(distance, _)| *distance >= MIN_PLAYING_HUE_DISTANCE)
+        .max_by(|a, b| a.0.total_cmp(&b.0));
+    if let Some((_, playing)) = playing {
+        let playing = towards(playing, away, |color| readable_on_all(color, TEXT_CONTRAST));
+        palette.playing = Some(playing.hex());
+    }
     palette
 }
 
@@ -259,6 +289,30 @@ impl Rgb {
         r.max(g).max(b) - r.min(g).min(b)
     }
 
+    /// The hue in degrees, `0.0..360.0`; 0 for greys.
+    fn hue(self) -> f64 {
+        let [r, g, b] = self.0;
+        let max = r.max(g).max(b);
+        let chroma = self.chroma();
+        if chroma <= f64::EPSILON {
+            return 0.0;
+        }
+        let sixth = if max == r {
+            ((g - b) / chroma).rem_euclid(6.0)
+        } else if max == g {
+            (b - r) / chroma + 2.0
+        } else {
+            (r - g) / chroma + 4.0
+        };
+        sixth * 60.0
+    }
+
+    /// How far apart two hues are around the colour wheel, in degrees up to 180.
+    fn hue_distance(self, other: Self) -> f64 {
+        let distance = (self.hue() - other.hue()).abs();
+        distance.min(360.0 - distance)
+    }
+
     /// WCAG 2 contrast ratio.
     fn contrast(self, other: Self) -> f64 {
         let (a, b) = (self.luminance(), other.luminance());
@@ -317,10 +371,44 @@ mod tests {
         assert_eq!(manifest.scheme, ThemeScheme::Dark);
         assert_eq!(manifest.light, Palette::default());
         let palette = &manifest.dark;
-        assert_eq!(palette.window_bg.as_deref(), Some("#0b0b1a"));
-        assert_eq!(palette.window_fg.as_deref(), Some("#c2c2c5"));
+        // A little deeper than pywal's background, and text a little further from it.
+        assert_eq!(palette.window_bg.as_deref(), Some("#080814"));
+        assert_eq!(palette.window_fg.as_deref(), Some("#d4d4d6"));
+        let pywal_contrast = Rgb::parse("#c2c2c5")
+            .unwrap()
+            .contrast(Rgb::parse("#0b0b1a").unwrap());
+        assert!(color(&palette.window_fg).contrast(color(&palette.window_bg)) > pywal_contrast);
         assert_eq!(palette.accent.as_deref(), Some("#ae5b59"));
         assert_eq!(palette.accent_fg.as_deref(), Some("#ffffff"));
+    }
+
+    #[test]
+    fn a_far_hue_marks_what_is_playing_and_near_ones_do_not() {
+        // Reds and mauves only: nothing stands apart from the accent.
+        let near = wal_json(
+            "#0b0b1a",
+            "#c2c2c5",
+            [
+                "#554658", "#4E5570", "#6C5C71", "#6D6172", "#AE5B59", "#8D5C6A",
+            ],
+        );
+        assert_eq!(pywal_manifest(&near).unwrap().dark.playing, None);
+
+        // An orange accent and a teal a long way round the wheel from it.
+        let far = wal_json(
+            "#101418",
+            "#d0d4d8",
+            [
+                "#e0661a", "#c98a3c", "#2f9c95", "#6d7b88", "#8f6a4a", "#a7774d",
+            ],
+        );
+        let palette = pywal_manifest(&far).unwrap().dark;
+        assert_eq!(palette.accent.as_deref(), Some("#e0661a"));
+        let playing = color(&palette.playing);
+        assert!(playing.hue_distance(color(&palette.accent)) >= MIN_PLAYING_HUE_DISTANCE);
+        for surface in [&palette.window_bg, &palette.sidebar_bg, &palette.card_bg] {
+            assert!(playing.contrast(color(surface)) >= TEXT_CONTRAST);
+        }
     }
 
     #[test]
@@ -335,7 +423,8 @@ mod tests {
         let manifest = pywal_manifest(&json).unwrap();
         assert_eq!(manifest.scheme, ThemeScheme::Light);
         assert_eq!(manifest.dark, Palette::default());
-        assert_eq!(manifest.light.view_bg.as_deref(), Some("#f2ece4"));
+        // For a light palette, deeper is lighter.
+        assert_eq!(manifest.light.view_bg.as_deref(), Some("#f5f1eb"));
     }
 
     #[test]

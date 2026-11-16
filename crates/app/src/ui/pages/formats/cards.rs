@@ -115,12 +115,12 @@ impl Overview {
     }
 }
 
-/// One quality tier: its name, how many songs, their share and what it means.
+/// One quality tier: its name, how many songs, their share and what it means. A
+/// number rather than a chart: the composition bar above is the page's one chart.
 struct TierTile {
     root: gtk::Box,
     count: gtk::Label,
     share: gtk::Label,
-    meter: gtk::LevelBar,
 }
 
 impl TierTile {
@@ -145,7 +145,6 @@ impl TierTile {
         numbers.append(&count);
         numbers.append(&share);
 
-        let meter = meter(tier.css_class());
         let description = gtk::Label::builder()
             .label(tier.description())
             .xalign(0.0)
@@ -155,26 +154,19 @@ impl TierTile {
 
         let root = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
-            .spacing(8)
+            .spacing(6)
             .css_classes(["mp-quality-tier"])
             .build();
         root.append(&name);
         root.append(&numbers);
-        root.append(&meter);
         root.append(&description);
-        Self {
-            root,
-            count,
-            share,
-            meter,
-        }
+        Self { root, count, share }
     }
 
     fn update(&self, composition: &Composition, tier: QualityTier) {
         let songs = composition.tier(tier);
         self.count.set_label(&song_count(songs));
         self.share.set_label(&composition.percent(songs));
-        self.meter.set_value(composition.fraction(songs));
         self.root
             .update_property(&[gtk::accessible::Property::Label(&format!(
                 "{}: {}, {} of the library",
@@ -215,9 +207,6 @@ pub fn format_card(stats: &FormatStats, composition: &Composition) -> gtk::FlowB
         .ellipsize(gtk::pango::EllipsizeMode::End)
         .css_classes(["mp-format-description", "caption", "dim-label"])
         .build();
-    let meter = meter(codec::css_class(format));
-    meter.set_value(composition.fraction(stats.tracks));
-
     let card = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .css_classes(["mp-format-card", codec::css_class(format)])
@@ -226,7 +215,6 @@ pub fn format_card(stats: &FormatStats, composition: &Composition) -> gtk::FlowB
     card.append(&description);
     card.append(&card_figures(stats));
     card.append(&card_footer(stats, composition));
-    card.append(&meter);
 
     let child = gtk::FlowBoxChild::builder()
         .child(&card)
@@ -260,7 +248,7 @@ fn card_title(format: AudioFormat) -> gtk::Box {
     if format.is_lossless() {
         badge.add_css_class("mp-lossless");
     }
-    let title = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let title = gtk::Box::new(gtk::Orientation::Horizontal, 9);
     title.append(&codec::codec_dot(format));
     title.append(&name);
     title.append(&badge);
@@ -335,24 +323,6 @@ fn compact_duration(duration: Duration) -> String {
 
 fn songs_caption(count: usize) -> &'static str {
     if count == 1 { "Song" } else { "Songs" }
-}
-
-/// A thin bar showing a share (`mp-meter`), coloured by `css_class`.
-fn meter(css_class: &str) -> gtk::LevelBar {
-    let meter = gtk::LevelBar::builder()
-        .min_value(0.0)
-        .max_value(1.0)
-        .css_classes(["mp-meter", css_class])
-        .build();
-    // The default offsets recolour the bar as it fills; a share has no good or bad level.
-    for offset in [
-        gtk::LEVEL_BAR_OFFSET_LOW,
-        gtk::LEVEL_BAR_OFFSET_HIGH,
-        gtk::LEVEL_BAR_OFFSET_FULL,
-    ] {
-        meter.remove_offset_value(Some(offset.as_str()));
-    }
-    meter
 }
 
 #[cfg(test)]

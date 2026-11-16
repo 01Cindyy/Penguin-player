@@ -4,7 +4,13 @@
  * --mp-* variables below (see docs/themes.md). Colours come from libadwaita's
  * variables so every theme, light or dark, works without changes here.
  *
- * Spacing follows a 6px grid; --mp-spacing (12px) is the base unit for larger gaps.
+ * Spacing follows libadwaita's 6px grid, with 3px as the half step for nudges inside
+ * small controls; --mp-spacing (12px) is the base unit for larger gaps.
+ *
+ * The accent marks what you press to play, what is selected, what is playing and what
+ * is switched on. It is always flat: no gradients and no coloured glows. Motion uses
+ * one curve (--mp-ease) at 150ms for feedback, 200ms for things that appear and 300ms
+ * for the lyrics.
  */
 
 :root {
@@ -25,20 +31,32 @@
   /* Under small art and marks, and under what floats over a page. */
   --mp-small-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   --mp-floating-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  /* Around cards: an outline and a soft shadow, which grows under the pointer. */
+  /* Around cards: an outline and a soft shadow. */
   --mp-card-shadow: 0 0 0 1px var(--border-color), 0 2px 6px rgba(0, 0, 0, 0.05);
-  --mp-card-hover-shadow: 0 0 0 1px var(--border-color), 0 5px 14px rgba(0, 0, 0, 0.09);
-  /* A glow in the accent colour under the main play buttons. */
-  --mp-play-shadow: 0 3px 10px color-mix(in srgb, var(--accent-bg-color) 40%, transparent);
-  --mp-play-hover-shadow: 0 5px 16px color-mix(in srgb, var(--accent-bg-color) 50%, transparent);
-  /* The letter spacing of large titles. */
+  /* The letter spacing of page titles; smaller text is never tightened. */
   --mp-title-tracking: -0.3px;
+  /* The one curve everything moves on. */
+  --mp-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Over album art, which looks the same whatever the theme. */
   --mp-cover-scrim-color: rgba(0, 0, 0, 0.5);
   --mp-cover-scrim-fg-color: white;
   --mp-knob-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --mp-hires-badge-color: var(--warning-color);
   --mp-lossless-badge-color: var(--accent-color);
+}
+
+/* Type: titles and buttons at one weight, so size and colour set the hierarchy. */
+
+.title-1,
+.title-2,
+.title-3,
+.title-4,
+.heading,
+windowtitle .title,
+statuspage .title,
+button,
+viewswitcher button {
+  font-weight: 600;
 }
 
 /* Window structure */
@@ -61,7 +79,7 @@ window.mp-main-window {
 }
 
 .mp-search-entry {
-  min-height: 34px;
+  min-height: 36px;
   border-radius: var(--mp-pill-radius);
   padding-left: 12px;
   padding-right: 12px;
@@ -83,8 +101,8 @@ banner.mp-folder-banner {
 }
 
 .mp-sidebar .navigation-sidebar > row image {
-  color: color-mix(in srgb, currentColor 75%, transparent);
-  transition: color 200ms ease-out;
+  color: color-mix(in srgb, currentColor 65%, transparent);
+  transition: color 150ms var(--mp-ease);
 }
 
 .mp-sidebar .navigation-sidebar > row:selected image {
@@ -110,7 +128,7 @@ banner.mp-folder-banner {
 }
 
 .mp-sidebar-footer {
-  padding: 6px 8px 8px 20px;
+  padding: 6px 6px 6px 20px;
   border-top: 1px solid var(--border-color);
 }
 
@@ -123,14 +141,14 @@ banner.mp-folder-banner {
 }
 
 .mp-sidebar.mp-icons-only .mp-sidebar-footer {
-  padding: 6px 0 8px;
+  padding: 6px 0;
 }
 
 /* Edges dragged to resize the sidebar, the queue panel and the player bar: a faint
  * accent line while hovered or dragged. */
 
 .mp-resize-handle {
-  transition: box-shadow 150ms ease-out;
+  transition: box-shadow 150ms var(--mp-ease);
 }
 
 .mp-resize-width {
@@ -173,10 +191,9 @@ banner.mp-folder-banner {
 .mp-page-eyebrow,
 .mp-sidebar-heading,
 columnview.mp-track-table > header > button label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .mp-page-title {
@@ -201,13 +218,13 @@ columnview.mp-track-table > header > button label {
 }
 
 .mp-chip {
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 30px;
+  padding: 0 12px;
   border-radius: var(--mp-pill-radius);
   font-size: 90%;
-  font-weight: 600;
+  font-weight: 500;
   background-color: color-mix(in srgb, currentColor 7%, transparent);
-  transition: background-color 150ms ease-out, color 150ms ease-out;
+  transition: background-color 150ms var(--mp-ease), color 150ms var(--mp-ease);
 }
 
 .mp-chip:hover {
@@ -224,7 +241,7 @@ columnview.mp-track-table > header > button label {
 }
 
 .mp-chip-count {
-  font-weight: 500;
+  font-weight: 400;
   opacity: 0.6;
 }
 
@@ -240,23 +257,19 @@ columnview.mp-track-table > header > button label {
 /* Section headings, with a "Show All" button at their end */
 
 .mp-section-header {
-  min-height: 34px;
-}
-
-.mp-section-title {
-  letter-spacing: var(--mp-title-tracking);
+  min-height: 36px;
 }
 
 /* The label ends flush with the content; the hover pill reaches into the gutter. */
 button.mp-show-all {
-  min-height: 28px;
-  margin-right: -10px;
-  padding: 0 10px;
+  min-height: 30px;
+  margin-right: -12px;
+  padding: 0 12px;
   border-radius: var(--mp-pill-radius);
   font-size: 90%;
-  font-weight: 600;
+  font-weight: 500;
   color: color-mix(in srgb, currentColor 70%, transparent);
-  transition: color 150ms ease-out, background-color 150ms ease-out;
+  transition: color 150ms var(--mp-ease), background-color 150ms var(--mp-ease);
 }
 
 button.mp-show-all:hover {
@@ -267,8 +280,8 @@ button.mp-show-all:hover {
  * text, so the text itself stays aligned with what is around it. */
 button.mp-link {
   min-height: 0;
-  padding: 1px 5px;
-  margin: 0 -5px;
+  padding: 0 6px;
+  margin: 0 -6px;
   border-radius: calc(var(--mp-small-radius) * 2 / 3);
 }
 
@@ -310,8 +323,7 @@ columnview.mp-track-table > header > button sort-indicator:not(.ascending):not(.
 
 columnview.mp-track-table > listview > row {
   border-radius: var(--mp-small-radius);
-  margin-bottom: 1px;
-  transition: background-color 150ms ease-out;
+  transition: background-color 150ms var(--mp-ease);
 }
 
 columnview.mp-track-table > listview > row > cell {
@@ -319,7 +331,7 @@ columnview.mp-track-table > listview > row > cell {
 }
 
 .mp-track-title {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .mp-track-duration,
@@ -327,9 +339,12 @@ columnview.mp-track-table > listview > row > cell {
   font-feature-settings: "tnum";
 }
 
+/* What is playing is in the theme's playing colour, which is the accent unless the
+ * theme has one of its own: the song's title and equaliser here, and the visualiser,
+ * the waveform and the seek bar's progress below. */
 .mp-track-list .mp-playing .mp-track-title,
 .mp-playing-icon {
-  color: var(--accent-color);
+  color: var(--mp-playing-color, var(--accent-color));
 }
 
 /* The playing song's equaliser: bars that bounce at their own pace until paused, and
@@ -389,8 +404,8 @@ columnview.mp-track-table > listview > row > cell {
  * outline star of other songs shows only while its row is hovered or has the keyboard
  * focus. */
 button.mp-favourite-button {
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 30px;
+  min-height: 30px;
   padding: 0;
 }
 
@@ -399,7 +414,7 @@ button.mp-favourite-button.mp-favourite {
 }
 
 button.mp-favourite-button.mp-reveal-on-hover {
-  transition: opacity 150ms ease-out;
+  transition: opacity 150ms var(--mp-ease);
 }
 
 button.mp-favourite-button.mp-reveal-on-hover:not(.mp-favourite) {
@@ -412,28 +427,28 @@ row:focus-within button.mp-favourite-button.mp-reveal-on-hover {
   opacity: 1;
 }
 
-/* Format badges */
+/* Format badges: tags with a hairline and no fill. A lossy format is dim, a lossless
+ * one is in the accent and Hi-Res has a colour of its own. */
 
 .mp-format-badge {
-  padding: 1px 6px;
+  padding: 2px 6px;
   border-radius: calc(var(--mp-small-radius) * 2 / 3);
-  font-size: 72%;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-  color: color-mix(in srgb, currentColor 65%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-feature-settings: "tnum";
+  color: color-mix(in srgb, currentColor 60%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 16%, transparent);
 }
 
 .mp-format-badge.mp-lossless {
   color: var(--mp-lossless-badge-color);
-  background-color: color-mix(in srgb, var(--mp-lossless-badge-color) 10%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mp-lossless-badge-color) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mp-lossless-badge-color) 35%, transparent);
 }
 
 .mp-format-badge.mp-hires {
   color: var(--mp-hires-badge-color);
-  background-color: color-mix(in srgb, var(--mp-hires-badge-color) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mp-hires-badge-color) 35%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mp-hires-badge-color) 40%, transparent);
 }
 
 /* Album art */
@@ -458,9 +473,7 @@ row:focus-within button.mp-favourite-button.mp-reveal-on-hover {
 .mp-cover.mp-cover-placeholder,
 avatar.mp-artist-avatar,
 .mp-artist-avatar > avatar {
-  background-image: linear-gradient(135deg,
-    color-mix(in srgb, var(--accent-bg-color) 28%, var(--view-bg-color)),
-    color-mix(in srgb, var(--accent-bg-color) 8%, var(--view-bg-color)));
+  background-image: image(color-mix(in srgb, var(--accent-bg-color) 16%, var(--view-bg-color)));
   color: color-mix(in srgb, var(--accent-color) 65%, transparent);
 }
 
@@ -560,10 +573,10 @@ avatar.mp-artist-avatar,
 /* A button with an icon and a short text, such as Lyrics on Now Playing. */
 button.mp-toggle-labelled {
   min-height: 30px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: var(--mp-pill-radius);
   font-size: 90%;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 button.mp-play-button {
@@ -574,28 +587,20 @@ button.mp-play-button {
   border-radius: var(--mp-button-radius);
   background-color: var(--accent-bg-color);
   color: var(--accent-fg-color);
-  box-shadow: var(--mp-play-shadow);
-  transition: transform 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    box-shadow 200ms ease-out, background-image 200ms ease-out;
+  transition: transform 150ms var(--mp-ease), background-image 150ms var(--mp-ease);
 }
 
 button.mp-play-button:hover {
   background-image: image(color-mix(in srgb, currentColor 10%, transparent));
-  box-shadow: var(--mp-play-hover-shadow);
-  transform: scale(1.04);
 }
 
 button.mp-play-button:active {
   background-image: image(color-mix(in srgb, currentColor 18%, transparent));
-  transform: scale(0.96);
-}
-
-button.mp-play-button:disabled {
-  box-shadow: none;
+  transform: scale(0.97);
 }
 
 .mp-time-label {
-  min-width: 40px;
+  min-width: 42px;
   font-feature-settings: "tnum";
 }
 
@@ -603,7 +608,7 @@ button.mp-play-button:disabled {
  * sitting just above the seek bar's line (the bar's top padding is the negative margin). */
 .mp-visualizer {
   margin: 4px 6px -6px;
-  color: var(--accent-color);
+  color: var(--mp-playing-color, var(--accent-color));
   opacity: 0.8;
 }
 
@@ -622,7 +627,7 @@ scale.mp-volume > trough > slider {
   background-color: currentColor;
   box-shadow: var(--mp-knob-shadow);
   opacity: 0;
-  transition: opacity 150ms ease-out;
+  transition: opacity 150ms var(--mp-ease);
 }
 
 scale.mp-seek-bar:hover > trough > slider,
@@ -634,6 +639,10 @@ scale.mp-volume:focus-visible > trough > slider {
   opacity: 1;
 }
 
+scale.mp-seek-bar > trough > highlight {
+  background-color: var(--mp-playing-color, var(--accent-bg-color));
+}
+
 scale.mp-volume.mp-muted > trough > highlight {
   background-color: color-mix(in srgb, currentColor 35%, transparent);
 }
@@ -642,7 +651,7 @@ scale.mp-volume.mp-muted > trough > highlight {
  * is the waveform under it that shows (SeekBar hides what the trough holds). */
 .mp-waveform {
   margin: 0 6px;
-  color: var(--accent-color);
+  color: var(--mp-playing-color, var(--accent-color));
 }
 
 .mp-seek-waveform scale.mp-seek-bar {
@@ -691,11 +700,11 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 .mp-now-playing-column {
-  margin: 56px 32px 32px;
+  margin: 56px 36px 36px;
 }
 
 .mp-now-art {
-  margin-bottom: 28px;
+  margin-bottom: 30px;
 }
 
 .mp-cover.mp-cover-hero {
@@ -713,7 +722,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 
 /* Keeps its height while nothing plays, so the art doesn't change size. */
 .mp-now-playing-page .mp-now-quality-row {
-  margin-top: 10px;
+  margin-top: 12px;
   min-height: 20px;
 }
 
@@ -736,7 +745,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 .mp-now-divider {
-  margin: 12px 0 8px;
+  margin: 12px 0 6px;
 }
 
 /* The lyrics beside the art take the page's right half, over the same backdrop. */
@@ -746,7 +755,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 }
 
 .mp-now-playing-lyrics {
-  margin: 56px 32px 32px 0;
+  margin: 56px 36px 36px 0;
 }
 
 /* Lyrics: timed lines are dim, more so once sung, and the one being sung stands out and
@@ -764,7 +773,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 .mp-lyrics row {
   padding: 6px 12px;
   border-radius: var(--mp-panel-radius);
-  transition: opacity 300ms ease-out, background-color 150ms ease-out;
+  transition: opacity 300ms var(--mp-ease), background-color 150ms var(--mp-ease);
 }
 
 .mp-lyrics row:not(.activatable):hover {
@@ -773,7 +782,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 
 .mp-lyrics-line {
   font-size: 2em;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .mp-lyrics list.mp-lyrics-synced row {
@@ -784,7 +793,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 
 .mp-lyrics list.mp-lyrics-synced .mp-lyrics-line {
   transform: scale(0.8);
-  transition: transform 300ms ease-out;
+  transition: transform 300ms var(--mp-ease);
 }
 
 .mp-lyrics list.mp-lyrics-synced row.mp-lyrics-sung {
@@ -801,7 +810,7 @@ scale.mp-volume.mp-muted > trough > highlight {
 
 .mp-lyrics list:not(.mp-lyrics-synced) .mp-lyrics-line {
   font-size: 1.2em;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* An empty line between verses: a gap rather than a full line's height. */

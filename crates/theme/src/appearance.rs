@@ -98,11 +98,11 @@ impl Radii {
         match corners {
             CornerStyle::Round => None,
             CornerStyle::Slight => Some(Self {
-                window: 10,
-                panel: 8,
-                cover: 6,
+                window: 12,
+                panel: 12,
+                cover: 8,
                 button: 10,
-                small: 5,
+                small: 6,
                 pill: 10,
             }),
             CornerStyle::Square => Some(Self {
@@ -263,8 +263,11 @@ mod tests {
     }
 
     #[test]
-    fn default_options_leave_the_theme_alone() {
-        let css = theme(ThemeManifest::default()).appearance_css(Appearance::default());
+    fn round_corners_leave_the_theme_alone() {
+        let css = theme(ThemeManifest::default()).appearance_css(Appearance {
+            corners: CornerStyle::Round,
+            ..Appearance::default()
+        });
         assert!(css.is_empty());
     }
 
@@ -298,7 +301,7 @@ mod tests {
             assert!(!css.contains("transparent"));
         }
         assert!(square.contains("--mp-panel-radius: 3px;"));
-        assert!(slight.contains("--mp-panel-radius: 8px;"));
+        assert!(slight.contains("--mp-panel-radius: 12px;"));
     }
 
     #[test]
@@ -311,7 +314,7 @@ mod tests {
         manifest.shape.window_radius = Some(18);
         let themed = theme(manifest);
         assert_eq!(themed.window_radius(CornerStyle::Round), 18);
-        assert_eq!(themed.window_radius(CornerStyle::Slight), 10);
+        assert_eq!(themed.window_radius(CornerStyle::Slight), 12);
         assert_eq!(themed.window_radius(CornerStyle::Square), 4);
     }
 
@@ -355,6 +358,7 @@ mod tests {
     #[test]
     fn edges_outline_the_sidebar_queue_and_player_bar() {
         let css = theme(ThemeManifest::default()).appearance_css(Appearance {
+            corners: CornerStyle::Round,
             edges: true,
             ..Appearance::default()
         });
