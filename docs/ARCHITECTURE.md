@@ -12,7 +12,7 @@ crates/
   core/      mp-core         Data model, settings, play queue, search, LRC lyrics. No GUI, no audio.
   audio/     mp-audio        Playback engine: Symphonia decoding → ring buffer → cpal output. Gapless.
                              Also the visualiser's audio tap (Scope) and analysis (Spectrum).
-  library/   mp-library      Folder scanning (lofty tags), SQLite storage, playlists, folder watching.
+  library/   mp-library      Folder scanning (lofty tags), SQLite storage, playlists, favourites, folder watching.
                              Finding a song's lyrics (its tags or an .lrc file beside it).
   plugins/   mp-plugins      Sandboxed Lua plugin host (one thread, one Lua state per plugin), the
                              plugins shipped with the app, and the web and Discord access the user
@@ -126,6 +126,10 @@ the device's latency) and analyses it with `mp_audio::Spectrum`. Visualisers hol
 - Playlists are stored by file path, so they survive rescans and folder changes.
   Entries whose file is gone stay in the playlist and are listed as missing.
   `Library::reorder_playlist` saves a whole new order in one transaction.
+- Favourites are stored by file path too, with when each was added in milliseconds,
+  and listed newest first; songs added together are a millisecond apart, so they keep
+  their order. The store keeps `TrackObject::favourite` current, and every star
+  follows that flag.
 
 ### Search
 
@@ -229,18 +233,20 @@ crates/app/
       sidebar.rs, player_bar.rs, queue_panel.rs, folder_banner.rs, onboarding.rs
       preferences/          The dialog: General, Appearance, Plugins pages (plugin
                             settings pages and permission prompts in plugins.rs).
-      dialogs.rs            Shared dialogs: clear library, choose folder, playlists.
+      dialogs.rs            Shared dialogs: clear library, choose folder, playlists, and
+                            images for playlists and Favourites.
       context_menu.rs       Right-click, long press and Menu key, the same everywhere.
-      track_actions.rs      Play next, add to queue or playlist, go to album or artist,
-                            show in folder.
+      track_actions.rs      Play next, add to queue or playlist, add to or remove from
+                            Favourites, go to album or artist, show in folder.
       shortcuts.rs          Playback keys that don't steal keys from text fields, the
                             accelerators, and the Keyboard Shortcuts dialog, which lists
                             both from the tables that bind them.
       icons.rs              One constant per bundled icon.
       mod.rs                Small shared helpers (empty states, breakpoints, keep_alive).
-      pages/                One module per page: songs, albums, album, artists, artist,
-                            formats (+ cards, stats), format, now_playing, playlist,
-                            search (+ overview, results, full_lists).
+      pages/                One module per page: songs, favourites, albums, album,
+                            artists, artist, formats (+ cards, stats), format,
+                            now_playing, playlist, search (+ overview, results,
+                            full_lists).
       widgets/
         page_header.rs      Compact and hero page headers (title, eyebrow, actions).
         section_header.rs   Section titles with a "Show All" action.
@@ -251,6 +257,8 @@ crates/app/
         waveform.rs         The song's waveform, which the seek slider sits on top of when the
                             Waveform Seek Bar is on. The slider still takes the pointer and keys.
         equaliser.rs        The bouncing bars that mark the playing song (CSS animation).
+        favourite_button.rs A song's star, in song lists, search, the player bar and
+                            (labelled) on Now Playing.
         match_width.rs      Keeps Now Playing's controls as wide as the art.
         resize_handle.rs    The draggable edges of the sidebar, queue and player bar.
         balanced_row.rs     The player bar's three columns, controls always centred.
@@ -393,13 +401,13 @@ docs/themes.md lists them for theme authors.
 | Area | Classes |
 |---|---|
 | Window | `mp-main-window`, `mp-sidebar` (+ `mp-icons-only`), `mp-resize-handle` (+ `mp-resize-width`, `mp-resize-height`, `mp-dragging`), `mp-edge-shade` (+ `mp-start`, `mp-end`), `mp-folder-banner`, `mp-onboarding`, `mp-search-entry` |
-| Pages | `mp-songs-page`, `mp-albums-page`, `mp-album-page`, `mp-artists-page`, `mp-artist-page`, `mp-formats-page`, `mp-format-page`, `mp-playlist-page`, `mp-search-page` (on each page); `mp-narrow` on page parts in their narrow layout |
+| Pages | `mp-songs-page`, `mp-albums-page`, `mp-album-page`, `mp-artists-page`, `mp-artist-page`, `mp-formats-page`, `mp-format-page`, `mp-playlist-page`, `mp-favourites-page`, `mp-search-page` (on each page); `mp-narrow` on page parts in their narrow layout |
 | Page headers | `mp-page-header`, `mp-page-eyebrow`, `mp-page-title`, `mp-page-subtitle`, `mp-page-action` (Play, Shuffle), `mp-page-menu-button` |
 | Sections and controls | `mp-section-header`, `mp-section-title`, `mp-show-all`, `mp-chip` (filter chips), `mp-link` (text that opens a page) |
 | Now Playing | `mp-now-playing-page`, `cover-backdrop` (CSS node), `mp-now-playing-scrim`, `mp-now-playing-column`, `mp-cover-hero`, `mp-now-byline`, `mp-now-album`, `mp-seek-row`, `mp-now-playing-split`, `mp-now-playing-lyrics` |
 | Lyrics | `mp-lyrics`, `mp-lyrics-synced` (on the list of timed lyrics), `mp-lyrics-line`, `mp-lyrics-current`, `mp-lyrics-pause`, `mp-lyrics-break` |
 | Player bar | `mp-player-bar` (+ `mp-compact`), `mp-now-title`, `mp-now-artist`, `mp-now-quality`, `mp-now-quality-row`, `mp-now-quality-details`, `mp-play-button`, `mp-transport-button`, `mp-toggle-button`, `mp-seek-bar`, `mp-time-label`, `mp-volume` |
-| Covers | `mp-cover` with `mp-cover-row` (song rows), `mp-cover-small` (player bar, queue) or `mp-cover-large` (page headers); `mp-cover-placeholder` while there is no art; `mp-cover-mosaic` (playlist artwork); `mp-artist-avatar` (round artist images) |
+| Covers | `mp-cover` with `mp-cover-row` (song rows), `mp-cover-small` (player bar, queue) or `mp-cover-large` (page headers); `mp-cover-placeholder` while there is no art; `mp-cover-mosaic` (playlist and Favourites artwork); `mp-artist-avatar` (round artist images) |
 | Cards | `mp-card-grid` (the grid), `mp-album-card`, `mp-artist-card`, `mp-card-art`, `mp-card-play`, `mp-album-title`, `mp-album-artist`, `mp-artist-name`, `mp-artist-stats` |
 | Track lists | `mp-track-list`, `mp-track-table`, `mp-track-title`, `mp-track-artist`, `mp-track-album`, `mp-track-number`, `mp-track-duration`, `mp-track-quality`, `mp-disc-header`, `mp-playing` (the current track's row) |
 | Badges | `mp-format-badge` (+ `mp-lossless`, `mp-hires`), `mp-quality-badge` (album page) |
@@ -407,6 +415,7 @@ docs/themes.md lists them for theme authors.
 | Formats | `mp-format-overview`, `mp-composition-bar`, `mp-composition-segment`, `mp-quality-tier`, `mp-meter` (+ `mp-hires`, `mp-lossless`, `mp-lossy`), `mp-format-card`, `mp-codec-tile`, `mp-codec-dot`, `mp-codec-<id>` (`flac`, `alac`, `wav`, `aiff`, `mp3`, `aac`, `opus`, `vorbis`, `unknown`) |
 | Queue | `mp-queue-panel`, `mp-now-playing-card`, `mp-queue-list`, `mp-queue-row`, `mp-queue-remove`, `mp-queue-clear` |
 | Playlists | `mp-missing-entries`, `mp-missing-row`, `mp-drop-before`, `mp-drop-after` (drop markers), `mp-drag-icon` |
+| Favourites | `mp-favourite-button` (a song's star; + `mp-favourite` while the song is one, `mp-reveal-on-hover` in lists) |
 
 Other `mp-*` classes are layout details and may change.
 
@@ -433,7 +442,7 @@ under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
 | `<config>/plugins/<id>/plugin.json` | | User plugins |
 | `<data>/library.db` | `~/.local/share/penguin-player/` | SQLite library |
 | `<data>/session.json` | | The queue and the place in it when the app quit (`mp_core::Session`) |
-| `<data>/playlist-images/` | | Images the user chose for playlists |
+| `<data>/playlist-images/` | | Images the user chose for playlists and Favourites |
 | `<data>/plugin-data/` | | Plugin storage |
 | `<cache>/covers/`, `<cache>/thumbnails/` | `~/.cache/penguin-player/` | Extracted and downscaled cover art |
 | `<cache>/opened-covers/` | | Covers of songs opened from outside the library, emptied when the app quits |
@@ -481,7 +490,7 @@ under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
 | `PENGUIN_PLAYER_HOME=<dir>` | Keep config/data/cache under `<dir>` (portable mode; safe testing). |
 | `PENGUIN_PLAYER_NULL_AUDIO=1` | Decode in real time but discard audio (no sound device). |
 | `PENGUIN_PLAYER_SCREENSHOT=<file.png>` | Debug builds: render the window to a PNG once loaded, then quit. |
-| `PENGUIN_PLAYER_SCREENSHOT_PAGE=<page>` | Page to open first: `songs`, `albums`, `artists`, `formats`, `now-playing`, `queue`, `settings[:appearance\|plugins]`, `search:<query>`, `album:<title>`, `artist:<name>`, `playlist:<name>`, `format:<id>`. |
+| `PENGUIN_PLAYER_SCREENSHOT_PAGE=<page>` | Page to open first: `songs`, `favourites`, `albums`, `artists`, `formats`, `now-playing`, `queue`, `settings[:appearance\|plugins]`, `search:<query>`, `album:<title>`, `artist:<name>`, `playlist:<name>`, `format:<id>`. |
 | `PENGUIN_PLAYER_SCREENSHOT_SCHEME=light\|dark` | Force the colour scheme. |
 | `PENGUIN_PLAYER_SCREENSHOT_PLAY=<n>` | Play the library from track `n` first (only with `PENGUIN_PLAYER_NULL_AUDIO=1`). |
 | `PENGUIN_PLAYER_SCREENSHOT_DELAY=<seconds>` | Wait this long after opening the page (default 1). |

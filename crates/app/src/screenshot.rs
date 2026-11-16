@@ -4,7 +4,7 @@
 //! | Variable | Effect |
 //! |---|---|
 //! | `PENGUIN_PLAYER_SCREENSHOT=<file.png>` | Where to save the screenshot (turns this on). |
-//! | `PENGUIN_PLAYER_SCREENSHOT_PAGE=<page>` | `songs`, `albums`, `artists`, `formats`, `now-playing`, `queue`, `settings` (or `settings:appearance`, `settings:plugins`), `search:<query>`, or a detail page: `album:<title>`, `artist:<name>`, `playlist:<name>`, `format:<id>`. |
+//! | `PENGUIN_PLAYER_SCREENSHOT_PAGE=<page>` | `songs`, `favourites`, `albums`, `artists`, `formats`, `now-playing`, `queue`, `settings` (or `settings:appearance`, `settings:plugins`), `search:<query>`, or a detail page: `album:<title>`, `artist:<name>`, `playlist:<name>`, `format:<id>`. |
 //! | `PENGUIN_PLAYER_SCREENSHOT_SCHEME=light\|dark` | Forces the colour scheme. |
 //! | `PENGUIN_PLAYER_SCREENSHOT_PLAY=<n>` | Plays the library from track `n` first. Only with `PENGUIN_PLAYER_NULL_AUDIO=1`, so it never makes sound. |
 //! | `PENGUIN_PLAYER_SCREENSHOT_DELAY=<seconds>` | Waits this long after opening the page (default 1), e.g. to capture a later moment of playback. |
@@ -117,6 +117,7 @@ fn start_playback(ctx: &AppContext) {
 fn open_page(ctx: &Rc<AppContext>, window: &MainWindow, page: &str) {
     match page {
         "" | "songs" => ctx.navigator.navigate(Route::Songs),
+        "favourites" => ctx.navigator.navigate(Route::Favourites),
         "albums" => ctx.navigator.navigate(Route::Albums),
         "artists" => ctx.navigator.navigate(Route::Artists),
         "formats" => ctx.navigator.navigate(Route::Formats),

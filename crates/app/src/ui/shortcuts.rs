@@ -30,6 +30,7 @@ const PLAYBACK_SHORTCUTS: &[(gdk::Key, gdk::ModifierType, &str)] = &[
     (gdk::Key::Down, PRIMARY, "app.volume-down"),
     (gdk::Key::s, PRIMARY, "app.toggle-shuffle"),
     (gdk::Key::r, PRIMARY, "app.cycle-repeat"),
+    (gdk::Key::d, PRIMARY, "app.toggle-favourite"),
 ];
 
 /// Accelerators for actions that never conflict with typing, which the application
@@ -148,6 +149,7 @@ fn action_title(action: &str) -> &'static str {
         "app.volume-down" => "Volume Down",
         "app.toggle-shuffle" => "Shuffle On or Off",
         "app.cycle-repeat" => "Repeat: Off, All, One",
+        "app.toggle-favourite" => "Add to or Remove from Favourites",
         "app.search" => "Search",
         "app.toggle-queue" => "Show or Hide the Queue",
         "app.preferences" => "Preferences",
@@ -253,7 +255,7 @@ mod tests {
         assert_eq!(
             labels,
             [
-                "Space", "Ctrl+→", "Ctrl+←", "Ctrl+↑", "Ctrl+↓", "Ctrl+S", "Ctrl+R"
+                "Space", "Ctrl+→", "Ctrl+←", "Ctrl+↑", "Ctrl+↓", "Ctrl+S", "Ctrl+R", "Ctrl+D"
             ]
         );
         assert_eq!(key_label(gdk::Key::comma, PRIMARY), "Ctrl+,");

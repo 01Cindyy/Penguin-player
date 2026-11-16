@@ -22,7 +22,9 @@ use crate::covers::{self, CoverStore};
 use crate::disk::{DiskFile, DiskState, is_hidden_below};
 use crate::tags::{self, FileInfo};
 use crate::tracks::{self, ScannedTrack, StoredFile};
-use crate::{LibraryError, Result, ScanOptions, ScanProgress, ScanSummary, paths, playlists};
+use crate::{
+    LibraryError, Result, ScanOptions, ScanProgress, ScanSummary, favourites, paths, playlists,
+};
 
 /// How many files are read and then saved in one transaction. Small enough that the UI's
 /// connection never waits long for the write lock, and that an interrupted first scan
@@ -456,8 +458,8 @@ fn with_causes(error: &dyn Error) -> String {
     text
 }
 
-/// Moves tracks to their new paths (taking their playlist entries along) and deletes
-/// removed tracks, in one transaction.
+/// Moves tracks to their new paths (taking their playlist entries and favourites along)
+/// and deletes removed tracks, in one transaction.
 fn write_moves_and_removals(
     conn: &mut Connection,
     moves: &[Move],
@@ -470,6 +472,7 @@ fn write_moves_and_removals(
     for moved in moves {
         tracks::set_path(&tx, moved.id, &moved.file.path)?;
         playlists::repoint_entries(&tx, &moved.from, &moved.file.path)?;
+        favourites::repoint(&tx, &moved.from, &moved.file.path)?;
     }
     for &id in removed {
         tracks::delete(&tx, id)?;

@@ -247,6 +247,7 @@ fn song_list(
         .columns(&[
             TrackColumn::Title,
             TrackColumn::Album,
+            TrackColumn::Favourite,
             TrackColumn::Duration,
         ])
         .covers(true)

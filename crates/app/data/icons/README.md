@@ -48,6 +48,7 @@ The LGPL v3 is at <https://www.gnu.org/licenses/lgpl-3.0.html>.
 | `mp-menu-symbolic` | `actions/open-menu-symbolic` |
 | `mp-more-symbolic` | `actions/view-more-symbolic` |
 | `mp-music-folder-symbolic` | `places/folder-music-symbolic` |
+| `mp-non-starred-symbolic` | `status/non-starred-symbolic` |
 | `mp-open-folder-symbolic` | `status/folder-open-symbolic` |
 | `mp-pause-symbolic` | `actions/media-playback-pause-symbolic` |
 | `mp-play-symbolic` | `actions/media-playback-start-symbolic` |
@@ -67,6 +68,7 @@ The LGPL v3 is at <https://www.gnu.org/licenses/lgpl-3.0.html>.
 | `mp-skip-forward-symbolic` | `actions/media-skip-forward-symbolic` |
 | `mp-song-symbolic` | `mimetypes/audio-x-generic-symbolic` |
 | `mp-sort-descending-symbolic` | `actions/view-sort-descending-symbolic` |
+| `mp-starred-symbolic` | `status/starred-symbolic` |
 | `mp-trash-symbolic` | `places/user-trash-symbolic` |
 | `mp-unavailable-symbolic` | `actions/action-unavailable-symbolic` |
 | `mp-volume-high-symbolic` | `status/audio-volume-high-symbolic` |

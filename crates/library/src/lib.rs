@@ -1,14 +1,15 @@
 //! The music library: scanning a folder, reading tags with lofty, storing everything
-//! in SQLite, user playlists and watching the folder for changes.
+//! in SQLite, user playlists, favourite songs and watching the folder for changes.
 //!
 //! `Library` wraps one SQLite connection and is not `Sync`. The app keeps one on the
-//! UI thread for quick reads and playlist edits, and opens another on a worker thread
+//! UI thread for quick reads and playlist and favourite edits, and opens another on a worker thread
 //! for scanning (the database runs in WAL mode so both can be used at once).
 
 mod chapter_limit;
 mod covers;
 mod db;
 mod disk;
+mod favourites;
 mod lyrics;
 mod paths;
 mod playlists;
@@ -22,7 +23,9 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
-use mp_core::{CoverId, Playlist, PlaylistId, PlaylistItemId, Track, TrackId};
+use mp_core::{
+    CoverId, Favourite, Favourites, Playlist, PlaylistId, PlaylistItemId, Track, TrackId,
+};
 use rusqlite::Connection;
 
 pub use lyrics::{read_found_lyrics, read_lyrics, save_found_lyrics};
@@ -230,5 +233,32 @@ impl Library {
     /// changes nothing.
     pub fn reorder_playlist(&self, id: PlaylistId, order: &[PlaylistItemId]) -> Result<()> {
         playlists::reorder(&self.conn, id, order)
+    }
+
+    /// Every favourite song, newest first, resolved against the library, and the image
+    /// chosen for them.
+    pub fn favourites(&self) -> Result<Favourites> {
+        favourites::all(&self.conn)
+    }
+
+    /// Makes tracks favourites, the first of them newest. Tracks that already are keep
+    /// their place, and ids that aren't in the library are skipped.
+    pub fn add_favourites(&self, tracks: &[TrackId]) -> Result<()> {
+        favourites::add(&self.conn, tracks)
+    }
+
+    /// Stops the songs at `paths` being favourites.
+    pub fn remove_favourites(&self, paths: &[PathBuf]) -> Result<()> {
+        favourites::remove(&self.conn, paths)
+    }
+
+    /// Puts removed favourites back in their old places, e.g. to undo removing them.
+    pub fn restore_favourites(&self, favourites: &[Favourite]) -> Result<()> {
+        favourites::restore(&self.conn, favourites)
+    }
+
+    /// Sets or, with `None`, clears the image chosen for the favourites.
+    pub fn set_favourites_image(&self, image: Option<&CoverId>) -> Result<()> {
+        favourites::set_image(&self.conn, image)
     }
 }

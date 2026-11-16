@@ -46,6 +46,15 @@ pub fn unix_now() -> i64 {
         .unwrap_or(0)
 }
 
+/// Milliseconds since the Unix epoch, for timestamps that order things done quickly
+/// one after another.
+pub fn unix_now_millis() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis() as i64)
+        .unwrap_or(0)
+}
+
 /// 64-bit FNV-1a hash. Stable across builds and platforms, unlike `std`'s hasher,
 /// so it is safe to use for on-disk cache keys.
 pub fn stable_hash(bytes: &[u8]) -> u64 {

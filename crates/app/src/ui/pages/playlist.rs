@@ -4,6 +4,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::path::Path;
 use std::rc::{Rc, Weak};
 
 use adw::prelude::*;
@@ -76,6 +77,8 @@ struct PlaylistPage {
     list: TrackList,
     browse: gtk::Button,
     missing: MissingEntries,
+    /// The playlist entry shown by each row of `missing`.
+    missing_items: RefCell<Vec<PlaylistItemId>>,
     navigation_page: glib::WeakRef<adw::NavigationPage>,
 }
 
@@ -108,11 +111,14 @@ impl PlaylistPage {
             content.add_named(&empty_state(&browse), Some("empty"));
 
             let remove = weak.clone();
-            let missing = MissingEntries::new(move |items| {
-                if let Some(page) = remove.upgrade() {
-                    page.remove_missing(&items);
-                }
-            });
+            let missing = MissingEntries::new(
+                "Remove the missing files from this playlist",
+                move |positions| {
+                    if let Some(page) = remove.upgrade() {
+                        page.remove_missing(&positions);
+                    }
+                },
+            );
 
             Self {
                 ctx: ctx.clone(),
@@ -129,6 +135,7 @@ impl PlaylistPage {
                 list,
                 browse,
                 missing,
+                missing_items: RefCell::default(),
                 navigation_page: glib::WeakRef::new(),
             }
         })
@@ -216,7 +223,10 @@ impl PlaylistPage {
         self.rows.replace(rows);
         let tracks = self.distinct.borrow_mut().apply(tracks);
         sync_list_store(&self.tracks, &tracks);
-        self.missing.set_entries(&missing);
+        let paths: Vec<&Path> = missing.iter().map(|entry| entry.path.as_path()).collect();
+        self.missing.set_entries(&paths);
+        self.missing_items
+            .replace(missing.iter().map(|entry| entry.item).collect());
 
         self.header.set_title(&playlist.name);
         if let Some(page) = self.navigation_page.upgrade() {
@@ -362,8 +372,16 @@ impl PlaylistPage {
         }
     }
 
-    fn remove_missing(&self, entries: &[PlaylistItemId]) {
-        if self.remove_entries(entries) {
+    /// Removes the missing files' entries at `positions` in the missing files' list.
+    fn remove_missing(&self, positions: &[usize]) {
+        let entries: Vec<PlaylistItemId> = {
+            let items = self.missing_items.borrow();
+            positions
+                .iter()
+                .filter_map(|&position| items.get(position).copied())
+                .collect()
+        };
+        if self.remove_entries(&entries) {
             let what = count_label(entries.len(), "missing file", "missing files");
             self.announce_removal(&what, Vec::new());
         }
@@ -431,6 +449,7 @@ fn song_list(ctx: &Rc<AppContext>, tracks: &gio::ListStore, page: Weak<PlaylistP
             TrackColumn::Title,
             TrackColumn::Album,
             TrackColumn::Format,
+            TrackColumn::Favourite,
             TrackColumn::Duration,
         ])
         .covers(true)
@@ -499,7 +518,7 @@ fn not_found() -> adw::NavigationPage {
 }
 
 /// "12 songs · 48 min", plus how many files are missing.
-fn summary(tracks: &[TrackObject], missing: usize) -> String {
+pub(super) fn summary(tracks: &[TrackObject], missing: usize) -> String {
     let duration_ms: u64 = tracks.iter().map(TrackObject::duration_ms).sum();
     let mut parts = Vec::new();
     if !tracks.is_empty() {

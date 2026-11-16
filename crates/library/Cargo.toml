@@ -18,7 +18,7 @@ lofty = "0.25"
 notify = "8"
 rayon = "1"
 # `fallible_uint` lets u64 sizes and durations be stored and read without casts.
-rusqlite = { version = "0.40", features = ["bundled", "fallible_uint"] }
+rusqlite = { version = "0.43", features = ["bundled", "fallible_uint"] }
 same-file = "1"
 walkdir = "2"
 

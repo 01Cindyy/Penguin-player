@@ -385,6 +385,33 @@ columnview.mp-track-table > listview > row > cell {
   animation-play-state: paused;
 }
 
+/* A song's star, in the accent colour while the song is a favourite. In lists, the
+ * outline star of other songs shows only while its row is hovered or has the keyboard
+ * focus. */
+button.mp-favourite-button {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+
+button.mp-favourite-button.mp-favourite {
+  color: var(--accent-color);
+}
+
+button.mp-favourite-button.mp-reveal-on-hover {
+  transition: opacity 150ms ease-out;
+}
+
+button.mp-favourite-button.mp-reveal-on-hover:not(.mp-favourite) {
+  opacity: 0;
+}
+
+row:hover button.mp-favourite-button.mp-reveal-on-hover,
+row:focus-visible button.mp-favourite-button.mp-reveal-on-hover,
+row:focus-within button.mp-favourite-button.mp-reveal-on-hover {
+  opacity: 1;
+}
+
 /* Format badges */
 
 .mp-format-badge {

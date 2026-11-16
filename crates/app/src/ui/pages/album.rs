@@ -229,6 +229,7 @@ impl AlbumPage {
         if layout.formats {
             columns.push(TrackColumn::Format);
         }
+        columns.push(TrackColumn::Favourite);
         columns.push(TrackColumn::Duration);
         let mut builder = TrackList::builder(&self.ctx)
             .columns(&columns)

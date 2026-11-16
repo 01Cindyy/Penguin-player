@@ -16,7 +16,7 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gdk_pixbuf, gio, glib};
 use mp_core::util::stable_hash;
-use mp_core::{AppPaths, CoverId, PlaylistId};
+use mp_core::{AppPaths, CoverId};
 
 /// Pixel data of decoded covers kept in memory.
 const MEMORY_BUDGET_BYTES: usize = 32 * 1024 * 1024;
@@ -299,10 +299,11 @@ fn file_name(cover: &CoverId) -> &str {
         .unwrap_or_default()
 }
 
-/// Copies the image at `source` to `dir` for playlist `id`, as a square from its middle,
-/// and returns its id. Each version gets its own name, as thumbnails go by the name.
-/// Slow, so call it off the main thread.
-pub fn import_playlist_image(source: &Path, id: PlaylistId, dir: &Path) -> Result<CoverId, String> {
+/// Copies the image at `source` to `dir`, as a square from its middle, and returns its
+/// id. `owner` names what it is for in the file name: a playlist's id, or `favourites`.
+/// Each version gets its own name, as thumbnails go by the name. Slow, so call it off
+/// the main thread.
+pub fn import_playlist_image(source: &Path, owner: &str, dir: &Path) -> Result<CoverId, String> {
     let pixbuf = decode_scaled(source, PLAYLIST_IMAGE_SIZE)?;
     let side = pixbuf.width().min(pixbuf.height());
     let square = pixbuf.new_subpixbuf(
@@ -312,21 +313,20 @@ pub fn import_playlist_image(source: &Path, id: PlaylistId, dir: &Path) -> Resul
         side,
     );
     fs::create_dir_all(dir).map_err(|err| err.to_string())?;
-    let partial = dir.join(format!("{PLAYLIST_IMAGE_PREFIX}{}.part", id.0));
+    let partial = dir.join(format!("{PLAYLIST_IMAGE_PREFIX}{owner}.part"));
     square
         .savev(&partial, "png", &[])
         .map_err(|err| err.to_string())?;
     let contents = fs::read(&partial).map_err(|err| err.to_string())?;
     let name = format!(
-        "{PLAYLIST_IMAGE_PREFIX}{}-{:016x}.png",
-        id.0,
+        "{PLAYLIST_IMAGE_PREFIX}{owner}-{:016x}.png",
         stable_hash(&contents)
     );
     fs::rename(&partial, dir.join(&name)).map_err(|err| err.to_string())?;
     Ok(CoverId(name))
 }
 
-/// Deletes an image chosen for a playlist, which is no longer used.
+/// Deletes an image chosen for a playlist or the favourites, which is no longer used.
 pub fn remove_playlist_image(dir: &Path, image: &CoverId) {
     let path = dir.join(file_name(image));
     if let Err(err) = fs::remove_file(&path) {
@@ -656,7 +656,7 @@ mod tests {
         pixbuf.savev(&source, "png", &[]).unwrap();
 
         let images = dir.path().join("playlist-images");
-        let image = import_playlist_image(&source, PlaylistId(7), &images).unwrap();
+        let image = import_playlist_image(&source, "7", &images).unwrap();
         assert!(image.0.starts_with("playlist-7-"));
         let saved = images.join(&image.0);
         let (_, width, height) = gdk_pixbuf::Pixbuf::file_info(&saved).unwrap();
@@ -678,7 +678,7 @@ mod tests {
         let source = dir.path().join("notes.png");
         fs::write(&source, "not an image").unwrap();
         let images = dir.path().join("playlist-images");
-        assert!(import_playlist_image(&source, PlaylistId(7), &images).is_err());
+        assert!(import_playlist_image(&source, "7", &images).is_err());
     }
 
     #[test]

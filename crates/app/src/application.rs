@@ -5,12 +5,13 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::{gdk, gio, glib};
-use mp_core::{APP_ID, APP_NAME, APP_WEBSITE, PlayerCommand, VERSION};
+use mp_core::{APP_ID, APP_NAME, APP_WEBSITE, PlayerCommand, TrackId, VERSION};
 
 use crate::context::AppContext;
 use crate::player::VOLUME_STEP;
+use crate::ui::widgets::favourite_button;
 use crate::ui::window::MainWindow;
-use crate::ui::{icons, preferences, shortcuts};
+use crate::ui::{icons, preferences, shortcuts, track_actions};
 
 /// Runs the application until it quits.
 pub fn run() -> glib::ExitCode {
@@ -206,11 +207,45 @@ fn install_actions(ctx: &Rc<AppContext>) {
         player_action("volume-up", |ctx| ctx.player.change_volume(VOLUME_STEP)),
         player_action("volume-down", |ctx| ctx.player.change_volume(-VOLUME_STEP)),
         player_action("rescan", |ctx| ctx.library_service.rescan(false)),
+        favourite_action(ctx),
+        favourite_song_action(ctx),
     ]);
     // Playback shortcuts (Space, Ctrl+arrows, …) are the window's: see `shortcuts`.
     for (action, accels) in shortcuts::ACCELERATORS {
         app.set_accels_for_action(action, accels);
     }
+}
+
+/// `app.toggle-favourite`: makes the playing song a favourite, or stops it being one.
+fn favourite_action(ctx: &Rc<AppContext>) -> gio::ActionEntry<adw::Application> {
+    let weak = Rc::downgrade(ctx);
+    gio::ActionEntry::builder("toggle-favourite")
+        .activate(move |_: &adw::Application, _, _| {
+            if let Some(ctx) = weak.upgrade()
+                && let Some(track) = ctx.player.current_track()
+            {
+                track_actions::toggle_favourite(&ctx, &track);
+            }
+        })
+        .build()
+}
+
+/// [`favourite_button::ACTION`]: the same for the song whose id it is given.
+fn favourite_song_action(ctx: &Rc<AppContext>) -> gio::ActionEntry<adw::Application> {
+    let weak = Rc::downgrade(ctx);
+    let name = favourite_button::ACTION.trim_start_matches("app.");
+    gio::ActionEntry::builder(name)
+        .parameter_type(Some(glib::VariantTy::INT64))
+        .activate(move |_: &adw::Application, _, parameter| {
+            let track = parameter
+                .and_then(|parameter| parameter.get::<i64>())
+                .zip(weak.upgrade())
+                .and_then(|(id, ctx)| Some((ctx.store.track(TrackId(id))?, ctx)));
+            if let Some((track, ctx)) = track {
+                track_actions::toggle_favourite(&ctx, &track);
+            }
+        })
+        .build()
 }
 
 fn show_about(window: &MainWindow) {

@@ -91,6 +91,7 @@ impl FormatPage {
                 TrackColumn::Title,
                 TrackColumn::Album,
                 TrackColumn::Quality,
+                TrackColumn::Favourite,
                 TrackColumn::Duration,
             ])
             .covers(true)

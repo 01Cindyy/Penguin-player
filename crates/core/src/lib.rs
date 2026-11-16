@@ -23,7 +23,10 @@ pub use collection::{Album, AlbumKey, Artist};
 pub use events::{PlaybackState, PlayerCommand, PlayerEvent};
 pub use format::AudioFormat;
 pub use lyrics::{LyricLine, Lyrics};
-pub use model::{CoverId, Playlist, PlaylistEntry, PlaylistId, PlaylistItemId, Track, TrackId};
+pub use model::{
+    CoverId, Favourite, Favourites, Playlist, PlaylistEntry, PlaylistId, PlaylistItemId, Track,
+    TrackId,
+};
 pub use paths::AppPaths;
 pub use queue::{PlayQueue, RepeatMode};
 pub use search::SearchQuery;

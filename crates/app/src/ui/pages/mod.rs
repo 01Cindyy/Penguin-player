@@ -10,6 +10,7 @@ pub mod album;
 pub mod albums;
 pub mod artist;
 pub mod artists;
+pub mod favourites;
 pub mod format;
 pub mod formats;
 pub mod now_playing;

@@ -15,6 +15,7 @@ const MIGRATIONS: &[&str] = &[
     PLAYLIST_ITEM_PATHS_V2,
     FILE_CHANGE_DETAILS_V3,
     PLAYLIST_IMAGES_V4,
+    FAVOURITES_V5,
 ];
 
 /// Paths are BLOBs in the encoding of [`crate::paths`]. Ids use AUTOINCREMENT so the id
@@ -79,6 +80,20 @@ ALTER TABLE tracks ADD COLUMN folder_images INTEGER;
 /// of the playlist's songs.
 const PLAYLIST_IMAGES_V4: &str = "
 ALTER TABLE playlists ADD COLUMN image TEXT;
+";
+
+/// Favourite songs, by path like playlist items, with when each became one (in
+/// milliseconds), and the image chosen for them: a single row with id 0, or none.
+const FAVOURITES_V5: &str = "
+CREATE TABLE favourites (
+    path   BLOB    PRIMARY KEY,
+    added  INTEGER NOT NULL
+);
+
+CREATE TABLE favourites_image (
+    id     INTEGER PRIMARY KEY CHECK (id = 0),
+    image  TEXT    NOT NULL
+);
 ";
 
 /// How long a statement waits for the other connection (UI or scanner) to release its lock.

@@ -15,7 +15,7 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 use mp_core::files::{remove_cache_files_of_other_songs, song_cache_key};
-use mp_core::{PlayerEvent, Playlist};
+use mp_core::{Favourites, PlayerEvent, Playlist};
 use mp_library::{Library, LibraryError, LibraryWatcher, ScanOptions, ScanProgress, ScanSummary};
 
 use crate::context::AppContext;
@@ -43,6 +43,7 @@ enum Update {
     Library {
         snapshot: LibrarySnapshot,
         playlists: Vec<Playlist>,
+        favourites: Favourites,
     },
     ScanStarted,
     ScanProgress(ScanProgress),
@@ -214,10 +215,12 @@ impl LibraryService {
             Update::Library {
                 snapshot,
                 playlists,
+                favourites,
             } => {
                 let track_count = snapshot.tracks.len();
                 ctx.store.replace(snapshot);
                 ctx.store.set_playlists(playlists);
+                ctx.store.set_favourites(favourites);
                 ctx.covers.library_changed();
                 // The first time, the songs of the last run's queue are known now.
                 ctx.restore_session();
@@ -427,12 +430,14 @@ impl Worker {
     fn send_library(&self) {
         let loaded = self.library.tracks().and_then(|tracks| {
             let playlists = self.library.playlists()?;
-            Ok((LibrarySnapshot::new(tracks), playlists))
+            let favourites = self.library.favourites()?;
+            Ok((LibrarySnapshot::new(tracks), playlists, favourites))
         });
         match loaded {
-            Ok((snapshot, playlists)) => self.send(Update::Library {
+            Ok((snapshot, playlists, favourites)) => self.send(Update::Library {
                 snapshot,
                 playlists,
+                favourites,
             }),
             Err(err) => self.send(Update::Error(format!(
                 "Couldn’t read the music library: {err}"

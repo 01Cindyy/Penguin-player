@@ -148,6 +148,13 @@ impl CoverMosaic {
         }
     }
 
+    /// Shows `icon_name` on the placeholder instead of a music note, and names the
+    /// artwork `label` for screen readers.
+    pub fn set_placeholder(&self, icon_name: &str, label: &str) {
+        self.imp().placeholder.set_icon_name(Some(icon_name));
+        self.update_property(&[gtk::accessible::Property::Label(label)]);
+    }
+
     /// Shows the first [`MOSAIC_TILES`] of `covers` as a mosaic, or the first cover
     /// alone if there are fewer. Cheap to call again with the same covers.
     pub fn set_covers(&self, covers: &[CoverId]) {

@@ -353,6 +353,13 @@ impl AppContext {
         });
     }
 
+    /// Re-reads the favourites into the [`LibraryStore`] after an edit.
+    pub fn refresh_favourites(&self) {
+        self.edit_library("load favourites", |library| {
+            self.store.refresh_favourites(library)
+        });
+    }
+
     /// Shows a short in-app notification. `message` is plain text, so titles and
     /// names with characters such as `&` show as they are.
     pub fn toast(&self, message: &str) {

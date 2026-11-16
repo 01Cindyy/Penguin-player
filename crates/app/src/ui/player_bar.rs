@@ -20,8 +20,8 @@ use crate::model::TrackObject;
 use crate::player::{Player, PlayerState};
 use crate::ui::navigation::Route;
 use crate::ui::widgets::{
-    BalancedRow, CoverImage, CoverSize, FormatBadge, Grows, Resizable, SeekBar, TransportControls,
-    Visualizer, VolumeControls, resize_handle,
+    BalancedRow, CoverImage, CoverSize, FavouriteButton, FormatBadge, Grows, Resizable, SeekBar,
+    TransportControls, Visualizer, VolumeControls, resize_handle,
 };
 use crate::ui::{
     ellipsized_label, icon_toggle, icons, link_button, set_css_class, set_link_active,
@@ -60,9 +60,9 @@ struct Widgets {
     extras: Extras,
 }
 
-/// What's playing: the cover, which opens Now Playing, and the title and artist,
-/// which open their pages. The format badge follows the artist, or with full quality
-/// details, starts a line of its own before them.
+/// What's playing: the cover, which opens Now Playing, the title and artist, which
+/// open their pages, and the song's star. The format badge follows the artist, or with
+/// full quality details, starts a line of its own before them.
 struct NowPlaying {
     root: gtk::Box,
     cover: CoverImage,
@@ -75,6 +75,7 @@ struct NowPlaying {
     badge: FormatBadge,
     quality_row: gtk::Box,
     details: gtk::Label,
+    star: FavouriteButton,
 }
 
 /// The queue toggle and the volume controls at the end of the bar.
@@ -289,6 +290,7 @@ impl PlayerBar {
             }
         }
         w.now.badge.set_track(track.as_ref().map(|t| t.track()));
+        w.now.star.set_track(track.as_ref());
         let details = track
             .as_ref()
             .map(|t| t.track().quality_details())
@@ -588,12 +590,15 @@ fn now_playing(ctx: &AppContext) -> NowPlaying {
     text.append(&title_button);
     text.append(&artist_row);
     text.append(&quality_row);
+    let star = FavouriteButton::new(false);
+    star.show_shortcut();
     let root = gtk::Box::builder()
         .spacing(12)
         .css_classes(["mp-now-playing"])
         .build();
     root.append(&cover_button);
     root.append(&text);
+    root.append(&star);
     NowPlaying {
         root,
         cover,
@@ -606,6 +611,7 @@ fn now_playing(ctx: &AppContext) -> NowPlaying {
         badge,
         quality_row,
         details,
+        star,
     }
 }
 

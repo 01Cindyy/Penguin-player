@@ -57,6 +57,9 @@ mod imp {
         /// Whether this is the player's current track. Maintained by the player.
         #[property(get)]
         playing: Cell<bool>,
+        /// Whether this is one of the user's favourites. Maintained by the store.
+        #[property(get)]
+        favourite: Cell<bool>,
     }
 
     impl TrackObject {
@@ -69,6 +72,12 @@ mod imp {
         pub(super) fn set_playing(&self, playing: bool) {
             if self.playing.replace(playing) != playing {
                 self.obj().notify_playing();
+            }
+        }
+
+        pub(super) fn set_favourite(&self, favourite: bool) {
+            if self.favourite.replace(favourite) != favourite {
+                self.obj().notify_favourite();
             }
         }
     }
@@ -134,6 +143,18 @@ impl TrackObject {
     /// Marks this track as the one playing, notifying only on change.
     pub(crate) fn mark_playing(&self, playing: bool) {
         self.imp().set_playing(playing);
+    }
+
+    /// Marks this track as a favourite or not, notifying only on change.
+    pub(crate) fn mark_favourite(&self, favourite: bool) {
+        self.imp().set_favourite(favourite);
+    }
+
+    /// Whether this track is in the library, rather than a song opened from outside it
+    /// (see [`super::LibraryStore::add_opened`]), which can't be a favourite or go in
+    /// playlists.
+    pub fn in_library(&self) -> bool {
+        self.track_id().0 >= 0
     }
 }
 

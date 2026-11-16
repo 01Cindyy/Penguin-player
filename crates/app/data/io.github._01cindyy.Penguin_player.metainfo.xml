@@ -48,6 +48,22 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.3.0" date="2026-11-16">
+      <description>
+        <p>Favourites, a queue that waits for you, and less memory.</p>
+        <ul>
+          <li>Favourites: star songs in any list, the player bar or Now Playing, or press Ctrl+D, and find them in the sidebar, newest first</li>
+          <li>The queue comes back as you left it, paused on the same song, when you start the app again</li>
+          <li>Low Memory Mode in Preferences draws without the graphics card, for computers short on memory</li>
+          <li>The app hands back memory it no longer needs, and lets go of covers while it is in the background</li>
+          <li>Cover thumbnails take much less space on disk</li>
+          <li>A list of keyboard shortcuts, in the main menu or with Ctrl+?</li>
+          <li>Compilations stay one album even when only some of their songs name the album artist</li>
+          <li>Preferences says when Linux can watch only part of a large music folder for changes</li>
+          <li>Your library is upgraded when you first start this version, and older versions can't open it after that</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-11-07">
       <description>
         <p>A more flexible Now Playing page, and smoother drawing on Windows.</p>

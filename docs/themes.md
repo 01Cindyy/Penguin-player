@@ -322,7 +322,7 @@ details that can change.
 | `.mp-search-entry` | The search field |
 | `.mp-folder-banner` | The warning shown while the music folder is unavailable |
 | `.mp-onboarding` | First-run folder picker |
-| `.mp-songs-page`, `.mp-albums-page`, `.mp-album-page`, `.mp-artists-page`, `.mp-artist-page`, `.mp-formats-page`, `.mp-format-page`, `.mp-playlist-page`, `.mp-search-page` | Each page, to style one page only |
+| `.mp-songs-page`, `.mp-albums-page`, `.mp-album-page`, `.mp-artists-page`, `.mp-artist-page`, `.mp-formats-page`, `.mp-format-page`, `.mp-playlist-page`, `.mp-favourites-page`, `.mp-search-page` | Each page, to style one page only |
 | `.mp-narrow` | Added to page headers, lists and grids while the window is narrow |
 | `.mp-page-header`, `.mp-page-eyebrow`, `.mp-page-title`, `.mp-page-subtitle` | Page headers: the small label above the title, the title, the line under it |
 | `.mp-sidebar-heading` | The "Playlists" heading in the sidebar |
@@ -333,14 +333,15 @@ details that can change.
 | `.mp-link` | Text that opens a page, such as an artist's name |
 | `.mp-player-bar` | Now-playing bar (with `.mp-compact` on narrow windows); inside it `.mp-now-title`, `.mp-now-artist`, `.mp-now-quality` (the format badge) and, with full quality details on, `.mp-now-quality-row` holding the badge and `.mp-now-quality-details` |
 | `.mp-play-button`, `.mp-transport-button`, `.mp-toggle-button` | Play/pause, previous/next, shuffle/repeat |
-| `.mp-toggle-labelled` | A toggle with an icon and text, as for Lyrics and Queue on Now Playing |
+| `.mp-toggle-labelled` | A toggle with an icon and text, as for Favourite, Lyrics and Queue on Now Playing |
+| `.mp-favourite-button` | A song's star in song lists, search and the player bar, with `.mp-favourite` while the song is a favourite (in the accent colour by default). In lists, `.mp-reveal-on-hover` keeps the stars of other songs hidden until their row is hovered or has the keyboard focus |
 | `.mp-seek-bar`, `.mp-time-label`, `.mp-volume` | Seek slider, time labels, volume control |
 | `.mp-visualizer` | The visualiser above the seek bar: its bars are drawn in its `color` (the accent by default), as tall as the player bar's top edge is dragged |
 | `.mp-waveform`, `.mp-seek-waveform` | The Waveform Seek Bar: the part already played is drawn in the `color` of `.mp-waveform` (the accent by default) and the rest in a faint version of the text colour. `.mp-seek-waveform` is on the row around it while the setting is on. Anything drawn on the slider's trough is hidden then, so themes don't need to allow for it |
 | `.mp-equaliser`, `.mp-equaliser-bar` | The bars that mark the playing song. They hold still under `.mp-paused`, which the main window has unless music is playing |
 | `.mp-cover` | Any album art; with `.mp-cover-row` in song rows, `.mp-cover-small` in the player bar and queue, `.mp-cover-large` in page headers |
 | `.mp-cover-placeholder` | Album art that is missing or still loading |
-| `.mp-cover-mosaic` | A playlist's artwork |
+| `.mp-cover-mosaic` | A playlist's or Favourites' artwork |
 | `.mp-artist-avatar` | Round artist image (an artist without art shows their initials on the placeholder tile) |
 | `.mp-card-grid` | Grids of album or artist cards |
 | `.mp-album-card`, `.mp-artist-card` | Album and artist cards; inside them `.mp-card-art`, `.mp-card-play` (the play button shown on hover), `.mp-album-title`, `.mp-album-artist`, `.mp-artist-name`, `.mp-artist-stats` |
@@ -359,7 +360,7 @@ details that can change.
 | `.mp-lyrics` | Lyrics on Now Playing: a list of `.mp-lyrics-line` labels, with `.mp-lyrics-synced` on the list when they are timed and `.mp-lyrics-current` on the row being sung and `.mp-lyrics-sung` on those before it. Pauses in timed lyrics are `.mp-lyrics-pause`, gaps between verses in plain ones `.mp-lyrics-break`. Beside the art they sit in `.mp-now-playing-lyrics` |
 | `.mp-seek-row` | A seek bar with its time labels (and the visualiser above it), in the player bar and on Now Playing |
 | `.mp-queue-panel` | Play queue side panel; inside it `.mp-now-playing-card`, `.mp-queue-list`, `.mp-queue-row`, `.mp-queue-remove`, `.mp-queue-clear` |
-| `.mp-missing-entries`, `.mp-missing-row` | A playlist's missing files |
+| `.mp-missing-entries`, `.mp-missing-row` | The missing files of a playlist or Favourites |
 | `.mp-drop-before`, `.mp-drop-after`, `.mp-drag-icon` | Where dragged songs will land, and the pill that follows the pointer |
 
 Some ideas:

@@ -180,6 +180,31 @@ impl Playlist {
     }
 }
 
+/// The user's favourite songs, newest first, and the image they chose for them.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Favourites {
+    pub entries: Vec<Favourite>,
+    pub image: Option<CoverId>,
+}
+
+/// A favourite song. Stored by file path like a playlist entry, so it survives
+/// rescans; `track` is `None` while the file is missing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Favourite {
+    pub path: PathBuf,
+    pub track: Option<TrackId>,
+    /// When it became a favourite, in milliseconds since the Unix epoch. Songs made
+    /// favourites together are a millisecond apart, so they keep their order.
+    pub added: i64,
+}
+
+impl Favourites {
+    /// Tracks that are currently present in the library, newest first.
+    pub fn available_tracks(&self) -> impl Iterator<Item = TrackId> + '_ {
+        self.entries.iter().filter_map(|entry| entry.track)
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;

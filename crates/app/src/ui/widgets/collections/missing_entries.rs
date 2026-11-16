@@ -1,19 +1,20 @@
-//! The playlist entries whose file is gone, listed under a playlist's songs.
+//! The entries of a playlist, or the favourites, whose file is gone, listed under the
+//! songs.
 
 use std::cell::{Cell, OnceCell, RefCell};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
-use mp_core::{PlaylistEntry, PlaylistItemId};
 
 use super::missing_row::MissingRow;
 use crate::ui::icons;
 use crate::util::{count_label, display_name};
 
-/// Runs with the entries the user chose to remove.
-type RemoveHandler = Box<dyn Fn(Vec<PlaylistItemId>)>;
+/// Runs with the positions, among the entries last set, of those the user chose to
+/// remove.
+type RemoveHandler = Box<dyn Fn(Vec<usize>)>;
 
 /// Rows shown before the list starts scrolling.
 const VISIBLE_ROWS: i32 = 3;
@@ -31,8 +32,8 @@ mod imp {
         pub(super) standalone: Cell<bool>,
         /// The missing files' paths, one per row.
         pub(super) paths: gtk::StringList,
-        /// The playlist entry of each row.
-        pub(super) items: RefCell<Vec<PlaylistItemId>>,
+        /// The same, to tell whether new entries change anything.
+        pub(super) shown: RefCell<Vec<PathBuf>>,
         pub(super) on_remove: OnceCell<RemoveHandler>,
     }
 
@@ -58,7 +59,8 @@ glib::wrapper! {
 }
 
 impl MissingEntries {
-    pub fn new(on_remove: impl Fn(Vec<PlaylistItemId>) + 'static) -> Self {
+    /// `remove_all` is the tooltip of the button that removes every entry.
+    pub fn new(remove_all: &str, on_remove: impl Fn(Vec<usize>) + 'static) -> Self {
         let widget: Self = glib::Object::new();
         widget.add_css_class("mp-missing-entries");
         widget.set_visible(false);
@@ -69,7 +71,7 @@ impl MissingEntries {
         );
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        content.append(&widget.build_header());
+        content.append(&widget.build_header(remove_all));
         imp.revealer.set_child(Some(&widget.build_list()));
         imp.revealer
             .set_transition_type(gtk::RevealerTransitionType::SlideDown);
@@ -82,30 +84,29 @@ impl MissingEntries {
         widget
     }
 
-    /// Shows `entries`: the playlist entries whose file is missing.
-    pub fn set_entries(&self, entries: &[&PlaylistEntry]) {
+    /// Shows the entries whose file is missing, by their paths.
+    pub fn set_entries(&self, paths: &[&Path]) {
         let imp = self.imp();
-        let items: Vec<PlaylistItemId> = entries.iter().map(|entry| entry.item).collect();
-        if *imp.items.borrow() == items {
+        if imp.shown.borrow().iter().eq(paths.iter().copied()) {
             return;
         }
-        let paths: Vec<String> = entries
+        let texts: Vec<String> = paths
             .iter()
-            .map(|entry| entry.path.to_string_lossy().into_owned())
+            .map(|path| path.to_string_lossy().into_owned())
             .collect();
-        let paths: Vec<&str> = paths.iter().map(String::as_str).collect();
-        imp.paths.splice(0, imp.paths.n_items(), &paths);
+        let texts: Vec<&str> = texts.iter().map(String::as_str).collect();
+        imp.paths.splice(0, imp.paths.n_items(), &texts);
         imp.heading.set_label(&count_label(
-            items.len(),
+            paths.len(),
             "file is missing",
             "files are missing",
         ));
-        self.set_visible(!items.is_empty());
-        imp.items.replace(items);
+        self.set_visible(!paths.is_empty());
+        imp.shown
+            .replace(paths.iter().map(|path| path.to_path_buf()).collect());
     }
 
-    /// Whether the card stands in for the playlist's songs because none of them are
-    /// available. It then lists every missing file, without collapsing or a height
+    /// Whether the card stands in for the songs because none of them are available. It then lists every missing file, without collapsing or a height
     /// limit.
     pub fn set_standalone(&self, standalone: bool) {
         let imp = self.imp();
@@ -122,7 +123,7 @@ impl MissingEntries {
         imp.scrolled.set_max_content_height(max_height);
     }
 
-    fn build_header(&self) -> gtk::Widget {
+    fn build_header(&self, remove_all_tooltip: &str) -> gtk::Widget {
         let imp = self.imp();
         let icon = gtk::Image::builder()
             .icon_name(icons::UNAVAILABLE)
@@ -150,14 +151,14 @@ impl MissingEntries {
         let remove_all = gtk::Button::builder()
             .label("Remove All")
             .valign(gtk::Align::Center)
-            .tooltip_text("Remove the missing files from this playlist")
+            .tooltip_text(remove_all_tooltip)
             .css_classes(["mp-missing-remove-all"])
             .build();
         let weak = self.downgrade();
         remove_all.connect_clicked(move |_| {
             if let Some(widget) = weak.upgrade() {
-                let items = widget.imp().items.borrow().clone();
-                widget.remove(items);
+                let count = widget.imp().shown.borrow().len();
+                widget.remove((0..count).collect());
             }
         });
 
@@ -203,14 +204,9 @@ impl MissingEntries {
                 let (Some(widget), Some(item)) = (widget.upgrade(), list_item.upgrade()) else {
                     return;
                 };
-                let entry = widget
-                    .imp()
-                    .items
-                    .borrow()
-                    .get(item.position() as usize)
-                    .copied();
-                if let Some(entry) = entry {
-                    widget.remove(vec![entry]);
+                let position = item.position() as usize;
+                if position < widget.imp().shown.borrow().len() {
+                    widget.remove(vec![position]);
                 }
             });
             item.set_child(Some(&row));
@@ -246,11 +242,11 @@ impl MissingEntries {
         scrolled.clone().upcast()
     }
 
-    fn remove(&self, items: Vec<PlaylistItemId>) {
+    fn remove(&self, positions: Vec<usize>) {
         if let Some(handler) = self.imp().on_remove.get()
-            && !items.is_empty()
+            && !positions.is_empty()
         {
-            handler(items);
+            handler(positions);
         }
     }
 }

@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use gtk::gio;
@@ -7,7 +7,8 @@ use gtk::glib;
 use gtk::glib::subclass::prelude::*;
 use gtk::prelude::*;
 use mp_core::{
-    Album, AlbumKey, Artist, AudioFormat, Playlist, PlaylistId, Track, TrackId, collection,
+    Album, AlbumKey, Artist, AudioFormat, Favourites, Playlist, PlaylistId, Track, TrackId,
+    collection,
 };
 
 use super::album::album_search_text;
@@ -78,6 +79,9 @@ mod imp {
         /// Songs from outside the library (see `add_opened`), by id and by path.
         pub(super) opened: RefCell<HashMap<TrackId, TrackObject>>,
         pub(super) opened_paths: RefCell<HashMap<PathBuf, TrackId>>,
+        pub(super) favourites: RefCell<Favourites>,
+        /// The favourites that are in the library.
+        pub(super) favourite_ids: RefCell<HashSet<TrackId>>,
 
         /// True once library data has arrived for the first time.
         #[property(get)]
@@ -87,6 +91,9 @@ mod imp {
         /// Combined length of every track in milliseconds.
         #[property(get)]
         pub(super) total_duration_ms: Cell<u64>,
+        /// How many favourites are in the library.
+        #[property(get)]
+        pub(super) favourite_count: Cell<u32>,
     }
 
     impl Default for LibraryStore {
@@ -103,9 +110,12 @@ mod imp {
                 formats: RefCell::default(),
                 opened: RefCell::default(),
                 opened_paths: RefCell::default(),
+                favourites: RefCell::default(),
+                favourite_ids: RefCell::default(),
                 loaded: Cell::default(),
                 track_count: Cell::default(),
                 total_duration_ms: Cell::default(),
+                favourite_count: Cell::default(),
             }
         }
     }
@@ -124,6 +134,7 @@ mod imp {
                 vec![
                     Signal::builder("tracks-changed").build(),
                     Signal::builder("playlists-changed").build(),
+                    Signal::builder("favourites-changed").build(),
                 ]
             })
         }
@@ -277,6 +288,7 @@ impl LibraryStore {
             ArtistObject::new,
         );
         sync_list_store(&imp.artists, &artists);
+        self.mark_favourites();
 
         imp.formats.replace(snapshot.formats);
         imp.total_duration_ms.set(total_duration);
@@ -319,6 +331,63 @@ impl LibraryStore {
     pub fn refresh_playlists(&self, library: &mp_library::Library) -> mp_library::Result<()> {
         self.set_playlists(library.playlists()?);
         Ok(())
+    }
+
+    /// The favourites, newest first, including those whose file is missing, and the
+    /// image chosen for them.
+    pub fn favourites(&self) -> Favourites {
+        self.imp().favourites.borrow().clone()
+    }
+
+    /// The favourites that are in the library, newest first.
+    pub fn favourite_tracks(&self) -> Vec<TrackObject> {
+        let index = self.imp().track_index.borrow();
+        let favourites = self.imp().favourites.borrow();
+        favourites
+            .available_tracks()
+            .filter_map(|id| index.get(&id).cloned())
+            .collect()
+    }
+
+    /// Replaces the favourites and marks the tracks that are favourites.
+    pub fn set_favourites(&self, favourites: Favourites) {
+        let imp = self.imp();
+        let ids: HashSet<TrackId> = favourites.available_tracks().collect();
+        let count = ids.len() as u32;
+        imp.favourite_ids.replace(ids);
+        imp.favourites.replace(favourites);
+        self.mark_favourites();
+        if imp.favourite_count.replace(count) != count {
+            self.notify_favourite_count();
+        }
+        self.emit_by_name::<()>("favourites-changed", &[]);
+    }
+
+    /// Re-reads the favourites from the database, e.g. after editing them.
+    pub fn refresh_favourites(&self, library: &mp_library::Library) -> mp_library::Result<()> {
+        self.set_favourites(library.favourites()?);
+        Ok(())
+    }
+
+    /// Called after the favourites changed, or were read again.
+    pub fn connect_favourites_changed<F: Fn(&Self) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
+        self.connect_closure(
+            "favourites-changed",
+            false,
+            glib::closure_local!(move |store: &Self| f(store)),
+        )
+    }
+
+    /// Marks each track as a favourite or not. New tracks from a refresh start unmarked.
+    fn mark_favourites(&self) {
+        let imp = self.imp();
+        let ids = imp.favourite_ids.borrow();
+        for (id, track) in imp.track_index.borrow().iter() {
+            track.mark_favourite(ids.contains(id));
+        }
     }
 
     /// Called after the track list (and so albums and artists) changed.
@@ -385,7 +454,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use mp_core::{PlaylistEntry, PlaylistItemId, SearchQuery};
+    use mp_core::{Favourite, PlaylistEntry, PlaylistItemId, SearchQuery};
 
     use super::*;
     use crate::model::track::tests::track;
@@ -444,6 +513,46 @@ mod tests {
         // A library refresh keeps them.
         store.replace_tracks(library());
         assert!(store.track(id).is_some());
+    }
+
+    #[test]
+    fn favourites_are_marked_even_on_objects_a_refresh_creates() {
+        let store = LibraryStore::new();
+        store.replace_tracks(library());
+        let changes = std::rc::Rc::new(std::cell::Cell::new(0));
+        let counter = changes.clone();
+        store.connect_favourites_changed(move |_| counter.set(counter.get() + 1));
+        let favourite = |track: i64| store.track(TrackId(track)).unwrap().favourite();
+
+        store.set_favourites(Favourites {
+            entries: vec![
+                Favourite {
+                    path: "/music/Opening.flac".into(),
+                    track: Some(TrackId(3)),
+                    added: 2,
+                },
+                Favourite {
+                    path: "/music/Gone.flac".into(),
+                    track: None,
+                    added: 1,
+                },
+            ],
+            image: None,
+        });
+        assert!(favourite(3) && !favourite(1));
+        assert_eq!(store.favourite_count(), 1);
+        assert_eq!(store.favourite_tracks(), [store.track(TrackId(3)).unwrap()]);
+        assert_eq!(changes.get(), 1);
+
+        // A changed file gets a new object.
+        let mut tracks = library();
+        tracks[2].title = "Opening (Live)".into();
+        store.replace_tracks(tracks);
+        assert!(favourite(3));
+
+        store.set_favourites(Favourites::default());
+        assert!(!favourite(3));
+        assert_eq!(store.favourite_count(), 0);
     }
 
     #[test]

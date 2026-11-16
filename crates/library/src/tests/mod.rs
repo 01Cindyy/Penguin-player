@@ -3,6 +3,7 @@
 
 mod bench;
 mod changes;
+mod favourites;
 mod fixtures;
 mod id3;
 mod lyrics;

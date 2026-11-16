@@ -1,0 +1,12 @@
+# Advisories `cargo audit` may let through, each with why it can't reach the app (see
+# packaging/README.md). Remove an entry once a fixed version can be used.
+
+[advisories]
+ignore = [
+    # quick-xml 0.38 (RUSTSEC-2026-0194, RUSTSEC-2026-0195: slow or memory-hungry on
+    # hostile XML). Only gvdb uses it, a build dependency that reads the app's own list
+    # of bundled icons while compiling, so it never reads anything else and isn't in
+    # the program. gvdb 0.10.1, its newest release, still needs a version before the fix.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+]

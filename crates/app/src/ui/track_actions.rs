@@ -1,13 +1,15 @@
 //! What can be done with a selection of tracks. Shared by every track context menu
 //! so "Add to playlist" behaves the same on every page.
 
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::{gio, glib};
-use mp_core::{PlaylistId, TrackId};
+use mp_core::{Favourite, PlaylistId, TrackId};
 
-use crate::context::AppContext;
+use crate::context::{AppContext, plain_toast};
 use crate::model::TrackObject;
 use crate::ui::dialogs;
 use crate::ui::navigation::Route;
@@ -54,6 +56,83 @@ pub fn add_to_new_playlist(ctx: &Rc<AppContext>, tracks: &[TrackObject]) {
             ctx.toast(&format!("Added {count} to “{name}”"));
         }
     });
+}
+
+/// Makes the songs among `tracks` that aren't favourites yet into favourites.
+pub fn add_to_favourites(ctx: &AppContext, tracks: &[TrackObject]) {
+    let new: Vec<TrackObject> = tracks
+        .iter()
+        .filter(|track| track.in_library() && !track.favourite())
+        .cloned()
+        .collect();
+    if new.is_empty() {
+        return;
+    }
+    let ids = ids_of(&new);
+    let added = ctx.edit_library("add to Favourites", |library| library.add_favourites(&ids));
+    if added.is_some() {
+        ctx.refresh_favourites();
+        ctx.toast(&format!("Added {} to Favourites", describe(&new)));
+    }
+}
+
+/// Stops `tracks` being favourites, offering to undo it.
+pub fn remove_from_favourites(ctx: &Rc<AppContext>, tracks: &[TrackObject]) {
+    let paths: HashSet<&Path> = tracks
+        .iter()
+        .map(|track| track.track().path.as_path())
+        .collect();
+    let removed = ctx
+        .store
+        .favourites()
+        .entries
+        .into_iter()
+        .filter(|favourite| paths.contains(favourite.path.as_path()))
+        .collect();
+    remove_favourites(ctx, removed, &describe(tracks));
+}
+
+/// Removes `favourites`, songs or missing files, with "Removed `what` from Favourites"
+/// and Undo, which puts them back where they were.
+pub fn remove_favourites(ctx: &Rc<AppContext>, favourites: Vec<Favourite>, what: &str) {
+    if favourites.is_empty() {
+        return;
+    }
+    let paths: Vec<PathBuf> = favourites
+        .iter()
+        .map(|favourite| favourite.path.clone())
+        .collect();
+    let removed = ctx.edit_library("remove from Favourites", |library| {
+        library.remove_favourites(&paths)
+    });
+    if removed.is_none() {
+        return;
+    }
+    ctx.refresh_favourites();
+    let toast = plain_toast(&format!("Removed {what} from Favourites"));
+    toast.set_button_label(Some("_Undo"));
+    let weak = Rc::downgrade(ctx);
+    toast.connect_button_clicked(move |_| {
+        if let Some(ctx) = weak.upgrade() {
+            ctx.edit_library("put the songs back", |library| {
+                library.restore_favourites(&favourites)
+            });
+            ctx.refresh_favourites();
+        }
+    });
+    ctx.show_toast(toast);
+}
+
+/// Makes `track` a favourite, or stops it being one.
+pub fn toggle_favourite(ctx: &Rc<AppContext>, track: &TrackObject) {
+    let tracks = std::slice::from_ref(track);
+    if !track.in_library() {
+        ctx.toast("Only songs in your library can be favourites");
+    } else if track.favourite() {
+        remove_from_favourites(ctx, tracks);
+    } else {
+        add_to_favourites(ctx, tracks);
+    }
 }
 
 fn go_to_album(ctx: &AppContext, track: &TrackObject) {
@@ -121,6 +200,12 @@ pub fn install_actions(
     add("new-playlist", |ctx, menu| {
         add_to_new_playlist(ctx, &menu.songs)
     });
+    add("add-favourites", |ctx, menu| {
+        add_to_favourites(ctx, &menu.songs)
+    });
+    add("remove-favourites", |ctx, menu| {
+        remove_from_favourites(ctx, &menu.songs)
+    });
     add("go-to-album", |ctx, menu| go_to_album(ctx, &menu.opened_on));
     add("go-to-artist", |ctx, menu| {
         go_to_artist(ctx, &menu.opened_on)
@@ -146,10 +231,11 @@ pub fn install_actions(
     widget.insert_action_group("tracks", Some(&group));
 }
 
-/// The context menu of songs: playback, "Add to Playlist", then going to the song's
-/// album, artist or folder, for the actions of [`install_actions`]. Build it when the
-/// menu opens, so it lists the current playlists.
-pub fn context_menu(ctx: &AppContext) -> gio::Menu {
+/// The context menu of `songs`: playback, Favourites and "Add to Playlist", then going
+/// to the song's album, artist or folder, for the actions of [`install_actions`]. Build
+/// it when the menu opens, so it lists the current playlists and offers to remove the
+/// songs from Favourites when they all are favourites.
+pub fn context_menu(ctx: &AppContext, songs: &[TrackObject]) -> gio::Menu {
     let playback = gio::Menu::new();
     playback.append(Some("Play"), Some("tracks.play"));
     playback.append(Some("Play Next"), Some("tracks.play-next"));
@@ -157,6 +243,8 @@ pub fn context_menu(ctx: &AppContext) -> gio::Menu {
 
     let playlists = playlist_submenu(ctx, "tracks.add-to-playlist", "tracks.new-playlist");
     let organise = gio::Menu::new();
+    let (label, action) = favourites_item(songs);
+    organise.append(Some(label), Some(action));
     organise.append_submenu(Some("Add to Playlist"), &playlists);
 
     let browse = gio::Menu::new();
@@ -169,6 +257,16 @@ pub fn context_menu(ctx: &AppContext) -> gio::Menu {
     menu.append_section(None, &organise);
     menu.append_section(None, &browse);
     menu
+}
+
+/// "Remove from Favourites" when every one of `songs` is a favourite, otherwise "Add to
+/// Favourites", with its action.
+fn favourites_item(songs: &[TrackObject]) -> (&'static str, &'static str) {
+    if !songs.is_empty() && songs.iter().all(TrackObject::favourite) {
+        ("Remove from Favourites", "tracks.remove-favourites")
+    } else {
+        ("Add to Favourites", "tracks.add-favourites")
+    }
 }
 
 /// Builds the "Add to Playlist" submenu: one entry per playlist (targeting
@@ -211,5 +309,20 @@ mod tests {
             .collect();
         assert_eq!(describe(&tracks[..1]), "“Song 1”");
         assert_eq!(describe(&tracks), "2 songs");
+    }
+
+    #[test]
+    fn the_menu_removes_songs_from_favourites_only_when_all_are() {
+        let tracks: Vec<TrackObject> = (1..=2)
+            .map(|id| TrackObject::new(test_track(id, "t", "a", "b")))
+            .collect();
+        let label = |songs: &[TrackObject]| favourites_item(songs).0;
+        assert_eq!(label(&tracks), "Add to Favourites");
+        tracks[0].mark_favourite(true);
+        assert_eq!(label(&tracks), "Add to Favourites");
+        assert_eq!(label(&tracks[..1]), "Remove from Favourites");
+        tracks[1].mark_favourite(true);
+        assert_eq!(label(&tracks), "Remove from Favourites");
+        assert_eq!(label(&[]), "Add to Favourites");
     }
 }

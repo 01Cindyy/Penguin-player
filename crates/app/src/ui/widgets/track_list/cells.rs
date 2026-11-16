@@ -10,7 +10,7 @@ use mp_core::util::format_duration;
 
 use crate::model::TrackObject;
 use crate::services::covers::CoverCache;
-use crate::ui::widgets::{FormatBadge, SongHeading, equaliser};
+use crate::ui::widgets::{FavouriteButton, FormatBadge, SongHeading, equaliser};
 use crate::ui::{ellipsized_label, set_css_class};
 
 /// A column a track list can show.
@@ -29,6 +29,8 @@ pub enum TrackColumn {
     Format,
     /// Bit depth and sample rate, or the bitrate of lossy formats.
     Quality,
+    /// The star that makes the song a favourite, or shows that it is one.
+    Favourite,
 }
 
 impl TrackColumn {
@@ -42,6 +44,7 @@ impl TrackColumn {
             TrackColumn::Duration => "Time",
             TrackColumn::Format => "Format",
             TrackColumn::Quality => "Quality",
+            TrackColumn::Favourite => "",
         }
     }
 
@@ -53,6 +56,7 @@ impl TrackColumn {
             TrackColumn::Duration => Some(76),
             TrackColumn::Format => Some(96),
             TrackColumn::Quality => Some(136),
+            TrackColumn::Favourite => Some(40),
             TrackColumn::Title | TrackColumn::Artist | TrackColumn::Album => None,
         }
     }
@@ -88,7 +92,7 @@ impl TrackColumn {
         let number = |name: &str| gtk::NumericSorter::new(Some(property(name))).upcast();
         match self {
             TrackColumn::Number => Some(number("track-number")),
-            TrackColumn::Position => None,
+            TrackColumn::Position | TrackColumn::Favourite => None,
             TrackColumn::Title => Some(text("title")),
             TrackColumn::Artist => Some(text("artist")),
             TrackColumn::Album => Some(text("album")),
@@ -110,6 +114,7 @@ enum CellContent {
     Title(SongHeading),
     Text(gtk::Label),
     Format(FormatBadge),
+    Favourite(FavouriteButton),
 }
 
 mod imp {
@@ -183,6 +188,7 @@ impl TrackCell {
                 label.set_label(&cell_text(self.column(), track));
             }
             CellContent::Format(badge) => badge.set_track(Some(track.track())),
+            CellContent::Favourite(star) => star.set_track(Some(track)),
         }
 
         let weak = self.downgrade();
@@ -198,6 +204,9 @@ impl TrackCell {
     pub fn unbind(&self) {
         if let Some((track, handler)) = self.imp().bound.take() {
             track.disconnect(handler);
+        }
+        if let Some(CellContent::Favourite(star)) = self.imp().content.get() {
+            star.set_track(None);
         }
     }
 
@@ -297,6 +306,11 @@ fn build_content(column: TrackColumn, covers: Option<&CoverCache>) -> (gtk::Widg
         TrackColumn::Format => {
             let badge = FormatBadge::new();
             (badge.clone().upcast(), CellContent::Format(badge))
+        }
+        TrackColumn::Favourite => {
+            let star = FavouriteButton::new(true);
+            star.set_halign(gtk::Align::Center);
+            (star.clone().upcast(), CellContent::Favourite(star))
         }
     }
 }

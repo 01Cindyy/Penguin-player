@@ -5,7 +5,8 @@
 //! `MainWindow`).
 //!
 //! With lyrics on, wide pages show them in their right half. Narrow ones have no room
-//! for them, so they only show the art.
+//! for them, so they only show the art. The buttons under the controls show only their
+//! icons when the art, which the controls match, is too narrow for their names.
 
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
@@ -23,8 +24,8 @@ use crate::model::TrackObject;
 use crate::player::{Player, PlayerState};
 use crate::ui::navigation::Route;
 use crate::ui::widgets::{
-    CoverBackdrop, CoverImage, FormatBadge, LyricsView, MatchWidth, SeekBar, TransportControls,
-    Visualizer, VolumeControls,
+    CoverBackdrop, CoverImage, FavouriteButton, FormatBadge, LyricsView, MatchWidth, SeekBar,
+    TransportControls, Visualizer, VolumeControls,
 };
 use crate::ui::window::MainWindow;
 use crate::ui::{
@@ -40,6 +41,11 @@ const VISUALIZER_HEIGHT: i32 = 56;
 /// Pages narrower than this (in sp) have no room for lyrics.
 const LYRICS_BESIDE_MIN_WIDTH: f64 = 860.0;
 const NO_ROOM_FOR_LYRICS: &str = "Make the window wider to show lyrics";
+/// The buttons under the controls show only their icons in a row narrower than this
+/// (in sp), which leaves the volume slider room to be used.
+const BUTTON_NAMES_MIN_WIDTH: f64 = 440.0;
+/// The narrowest that row gets, with only the buttons' icons.
+const BUTTONS_MIN_WIDTH: i32 = 240;
 /// Plugins search for a song's lyrics once it has played this long, so skipping
 /// through songs doesn't search for each.
 const SEARCH_AFTER: Duration = Duration::from_secs(1);
@@ -75,6 +81,7 @@ struct NowPlayingPage {
     badge: FormatBadge,
     details: gtk::Label,
     visualizer: Visualizer,
+    favourite: FavouriteButton,
     /// The controls, with the lyrics beside them on wide pages.
     split: adw::OverlaySplitView,
     lyrics_toggle: gtk::ToggleButton,
@@ -89,6 +96,20 @@ struct NowPlayingPage {
     own_lyrics: Cell<Option<OwnLyrics>>,
     /// The songs plugins find lyrics for, as last seen.
     lyrics_search: Cell<LyricsSearch>,
+}
+
+/// Below [`BUTTON_NAMES_MIN_WIDTH`], `buttons` (each holding an `adw::ButtonContent`)
+/// show only their icons, and `queue`, which has no tooltip of its own, names itself in
+/// one.
+fn icons_only_breakpoint(queue: &gtk::ToggleButton, buttons: &[&gtk::Button]) -> adw::Breakpoint {
+    let breakpoint = max_width_breakpoint(BUTTON_NAMES_MIN_WIDTH);
+    for button in buttons {
+        if let Some(content) = button.child().and_downcast::<adw::ButtonContent>() {
+            breakpoint.add_setter(&content, "label", Some(&"".to_value()));
+        }
+    }
+    breakpoint.add_setter(queue, "tooltip-text", Some(&"Queue".to_value()));
+    breakpoint
 }
 
 /// A handler for a change to the display options that decide what shows above the seek bar.
@@ -138,6 +159,7 @@ impl NowPlayingPage {
                 "numeric",
             ]),
             visualizer,
+            favourite: FavouriteButton::labelled(),
             split: adw::OverlaySplitView::builder()
                 .sidebar_position(gtk::PackType::End)
                 .sidebar_width_fraction(0.5)
@@ -217,11 +239,13 @@ impl NowPlayingPage {
         });
         let volume = VolumeControls::new(ctx);
         volume.fill_width();
+        self.favourite.show_shortcut();
         let extras = gtk::Box::builder()
             .spacing(4)
             .css_classes(["mp-player-extras"])
             .build();
         extras.append(&volume);
+        extras.append(&self.favourite);
         extras.append(&self.lyrics_toggle);
         extras.append(&queue);
 
@@ -237,7 +261,20 @@ impl NowPlayingPage {
                 .css_classes(["mp-now-divider"])
                 .build(),
         );
-        controls.append(&extras);
+        let buttons = adw::BreakpointBin::builder()
+            .width_request(BUTTONS_MIN_WIDTH)
+            .height_request(1)
+            .child(&extras)
+            .build();
+        buttons.add_breakpoint(icons_only_breakpoint(
+            &queue,
+            &[
+                self.favourite.upcast_ref(),
+                self.lyrics_toggle.upcast_ref(),
+                queue.upcast_ref(),
+            ],
+        ));
+        controls.append(&buttons);
 
         let column = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -402,6 +439,7 @@ impl NowPlayingPage {
         }
         self.badge
             .set_track(track.as_ref().map(|track| track.track()));
+        self.favourite.set_track(track.as_ref());
         let details = track
             .as_ref()
             .map(|track| track.track().quality_details())

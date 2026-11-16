@@ -17,7 +17,7 @@ use crate::context::AppContext;
 use crate::model::TrackObject;
 use crate::services::covers::CoverCache;
 use crate::ui::track_actions::{self, MenuSongs};
-use crate::ui::widgets::{FormatBadge, SongHeading};
+use crate::ui::widgets::{FavouriteButton, FormatBadge, SongHeading};
 use crate::ui::{context_menu, disconnect_on_destroy, ellipsized_label, set_css_class};
 
 type ActivateHandler = Box<dyn Fn(&TrackObject)>;
@@ -224,15 +224,16 @@ impl SongList {
     fn open_menu(&self, row: &gtk::ListBoxRow, x: i32, y: i32) {
         let imp = self.imp();
         imp.menu_position.set(Some(row.index() as u32));
+        let songs: Vec<TrackObject> = self.menu_track().into_iter().collect();
         imp.popover
-            .set_menu_model(Some(&track_actions::context_menu(self.ctx())));
+            .set_menu_model(Some(&track_actions::context_menu(self.ctx(), &songs)));
         imp.popover
             .set_pointing_to(Some(&gdk::Rectangle::new(x, y, 1, 1)));
         imp.popover.popup();
     }
 }
 
-/// A row: a [`SongHeading`], the format badge and the duration.
+/// A row: a [`SongHeading`], the format badge, the song's star and the duration.
 fn song_row(track: &TrackObject, covers: &CoverCache) -> gtk::ListBoxRow {
     let heading = SongHeading::new(Some(covers));
     heading.set_track(track);
@@ -242,9 +243,13 @@ fn song_row(track: &TrackObject, covers: &CoverCache) -> gtk::ListBoxRow {
     duration.set_label(&format_duration(track.track().duration()));
     duration.set_xalign(1.0);
 
+    let star = FavouriteButton::new(true);
+    star.set_track(Some(track));
+
     let content = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     content.append(&heading.root);
     content.append(&badge);
+    content.append(&star);
     content.append(&duration);
     let row = gtk::ListBoxRow::builder()
         .child(&content)

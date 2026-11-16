@@ -117,6 +117,7 @@ impl SongsPage {
                 TrackColumn::Title,
                 TrackColumn::Album,
                 TrackColumn::Format,
+                TrackColumn::Favourite,
                 TrackColumn::Duration,
             ])
             .covers(true)

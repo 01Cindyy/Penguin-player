@@ -13,7 +13,8 @@ use mp_core::{PlaylistId, TrackId};
 
 use crate::context::AppContext;
 use crate::model::PlaylistObject;
-use crate::ui::{dialogs, track_actions};
+use crate::ui::dialogs::{self, ImageOwner};
+use crate::ui::track_actions;
 
 /// The prefix to insert [`action_group`] under.
 pub const GROUP: &str = "playlist";
@@ -28,8 +29,12 @@ pub fn action_group(ctx: &Rc<AppContext>) -> gio::SimpleActionGroup {
         ("shuffle", shuffle),
         ("play-next", play_next),
         ("enqueue", enqueue),
-        ("choose-image", dialogs::choose_playlist_image),
-        ("remove-image", dialogs::remove_playlist_image),
+        ("choose-image", |ctx, playlist| {
+            dialogs::choose_image(ctx, ImageOwner::Playlist(playlist.playlist_id()));
+        }),
+        ("remove-image", |ctx, playlist| {
+            dialogs::remove_image(ctx, ImageOwner::Playlist(playlist.playlist_id()));
+        }),
         ("rename", dialogs::rename_playlist),
         ("delete", dialogs::delete_playlist),
     ];

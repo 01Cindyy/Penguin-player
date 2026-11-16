@@ -26,9 +26,10 @@ use crate::util::{format_count, song_count, total_length};
 /// The side of a playlist's picture beside its name, in pixels.
 const PLAYLIST_THUMBNAIL_SIZE: i32 = 28;
 
-/// Library sections in sidebar order. The first four show how many there are.
-const SECTIONS: [(Route, &str, &str); 5] = [
+/// Library sections in sidebar order. All but Now Playing show how many there are.
+const SECTIONS: [(Route, &str, &str); 6] = [
     (Route::Songs, "Songs", icons::SONG),
+    (Route::Favourites, "Favourites", icons::STARRED),
     (Route::Albums, "Albums", icons::ALBUM),
     (Route::Artists, "Artists", icons::ARTIST),
     (Route::Formats, "Formats", icons::FORMATS),
@@ -128,19 +129,23 @@ fn centre_when_icons_only(sidebar: &Sidebar, widget: &impl IsA<gtk::Widget>) {
         .build();
 }
 
-/// Songs, Albums, Artists and Formats, each with a live count, and Now Playing.
-fn library_list(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> (gtk::ListBox, [gtk::Label; 5]) {
+/// Songs, Favourites, Albums, Artists and Formats, each with a live count, and Now
+/// Playing. Songs dropped on Favourites become favourites.
+fn library_list(ctx: &Rc<AppContext>, sidebar: &Sidebar) -> (gtk::ListBox, [gtk::Label; 6]) {
     let list = gtk::ListBox::builder()
         .css_classes(["navigation-sidebar", "mp-sidebar-library"])
         .build();
     list.update_property(&[gtk::accessible::Property::Label("Library")]);
-    let counts = SECTIONS.map(|(_, title, icon)| {
+    let counts = SECTIONS.map(|(route, title, icon)| {
         // As wide as a playlist's picture, so all the names line up.
         let icon = gtk::Image::builder()
             .icon_name(icon)
             .width_request(PLAYLIST_THUMBNAIL_SIZE)
             .build();
         let (row, _, count) = sidebar_row(sidebar, title, &icon);
+        if route == Route::Favourites {
+            row.add_controller(add_favourites_target(ctx));
+        }
         list.append(&row);
         count
     });
@@ -287,6 +292,25 @@ fn add_songs_target(ctx: &Weak<AppContext>, id: PlaylistId) -> gtk::DropTarget {
             return false;
         };
         track_actions::add_to_playlist(&ctx, id, &tracks);
+        true
+    });
+    target
+}
+
+/// Songs dropped on Favourites become favourites.
+fn add_favourites_target(ctx: &Rc<AppContext>) -> gtk::DropTarget {
+    let target = gtk::DropTarget::new(TrackDrag::static_type(), gdk::DragAction::COPY);
+    let weak = Rc::downgrade(ctx);
+    target.connect_drop(move |_, value, _, _| {
+        let (Some(ctx), Ok(TrackDrag(ids))) = (weak.upgrade(), value.get::<TrackDrag>()) else {
+            return false;
+        };
+        let tracks = ctx.store.tracks_for(&ids);
+        if tracks.is_empty() && !ids.is_empty() {
+            ctx.toast("Only songs in your library can be favourites");
+            return false;
+        }
+        track_actions::add_to_favourites(&ctx, &tracks);
         true
     });
     target
@@ -629,14 +653,15 @@ fn position_of_playlist(model: &gio::ListStore, id: PlaylistId) -> Option<u32> {
         .map(|index| index as u32)
 }
 
-/// Shows song, album, artist and format counts next to their sections (Now Playing
-/// has none).
-fn keep_counts_current(ctx: &Rc<AppContext>, counts: [gtk::Label; 5]) {
+/// Shows song, favourite, album, artist and format counts next to their sections (Now
+/// Playing has none).
+fn keep_counts_current(ctx: &Rc<AppContext>, counts: [gtk::Label; 6]) {
     let update = move |ctx: &AppContext| {
         let store = &ctx.store;
         let formats = store.format_counts().len();
         let values = [
             store.track_count(),
+            store.favourite_count(),
             store.albums().n_items(),
             store.artists().n_items(),
             formats as u32,
@@ -650,11 +675,16 @@ fn keep_counts_current(ctx: &Rc<AppContext>, counts: [gtk::Label; 5]) {
             label.set_label(&text);
         }
     };
+    let update = Rc::new(update);
     update(ctx);
-    let weak = Rc::downgrade(ctx);
-    ctx.store.connect_tracks_changed(move |_| {
-        if let Some(ctx) = weak.upgrade() {
-            update(&ctx);
+    let refresh = || {
+        let (weak, update) = (Rc::downgrade(ctx), update.clone());
+        move |_: &LibraryStore| {
+            if let Some(ctx) = weak.upgrade() {
+                update(&ctx);
+            }
         }
-    });
+    };
+    ctx.store.connect_tracks_changed(refresh());
+    ctx.store.connect_favourites_changed(refresh());
 }

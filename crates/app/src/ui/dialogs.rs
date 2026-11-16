@@ -5,7 +5,8 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::{gio, glib};
-use mp_core::{PlaylistId, TrackId};
+use mp_core::{CoverId, PlaylistId, TrackId};
+use mp_library::Library;
 
 use crate::context::AppContext;
 use crate::model::PlaylistObject;
@@ -128,28 +129,82 @@ pub fn delete_playlist(ctx: &Rc<AppContext>, playlist: &PlaylistObject) {
     });
 }
 
-/// Asks for an image to show for `playlist` in place of its songs' covers. It is copied
-/// to the app's own folder, so moving or deleting the original doesn't matter.
-pub fn choose_playlist_image(ctx: &Rc<AppContext>, playlist: &PlaylistObject) {
+/// What an image can be chosen for, in place of its songs' covers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImageOwner {
+    Playlist(PlaylistId),
+    Favourites,
+}
+
+impl ImageOwner {
+    /// The image chosen for it now, if any.
+    fn image(self, ctx: &AppContext) -> Option<CoverId> {
+        match self {
+            ImageOwner::Playlist(id) => {
+                ctx.store.playlist(id).and_then(|playlist| playlist.image())
+            }
+            ImageOwner::Favourites => ctx.store.favourites().image,
+        }
+    }
+
+    fn save(self, library: &Library, image: Option<&CoverId>) -> mp_library::Result<()> {
+        match self {
+            ImageOwner::Playlist(id) => library.set_playlist_image(id, image),
+            ImageOwner::Favourites => library.set_favourites_image(image),
+        }
+    }
+
+    /// Shows the change everywhere.
+    fn refresh(self, ctx: &AppContext) {
+        match self {
+            ImageOwner::Playlist(_) => ctx.refresh_playlists(),
+            ImageOwner::Favourites => ctx.refresh_favourites(),
+        }
+    }
+
+    /// What its images' file names say they are for (see
+    /// [`covers::import_playlist_image`]).
+    fn file_name(self) -> String {
+        match self {
+            ImageOwner::Playlist(id) => id.0.to_string(),
+            ImageOwner::Favourites => "favourites".to_owned(),
+        }
+    }
+
+    /// "the playlist’s image", for messages.
+    fn describe(self) -> &'static str {
+        match self {
+            ImageOwner::Playlist(_) => "the playlist’s image",
+            ImageOwner::Favourites => "the Favourites image",
+        }
+    }
+}
+
+/// Asks for an image to show for `owner` in place of its songs' covers. It is copied to
+/// the app's own folder, so moving or deleting the original doesn't matter.
+pub fn choose_image(ctx: &Rc<AppContext>, owner: ImageOwner) {
     let images = gtk::FileFilter::new();
     images.set_name(Some("Images"));
     images.add_pixbuf_formats();
     let filters = gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&images);
+    let title = match owner {
+        ImageOwner::Playlist(_) => "Choose Playlist Image",
+        ImageOwner::Favourites => "Choose Favourites Image",
+    };
     let dialog = gtk::FileDialog::builder()
-        .title("Choose Playlist Image")
+        .title(title)
         .modal(true)
         .filters(&filters)
         .default_filter(&images)
         .build();
     let weak = Rc::downgrade(ctx);
-    let id = playlist.playlist_id();
     let parent = ctx.window();
     dialog.open(parent.as_ref(), gio::Cancellable::NONE, move |result| {
         let Some(ctx) = weak.upgrade() else { return };
         match result {
             Ok(file) => match file.path() {
-                Some(path) => use_playlist_image(&ctx, id, path),
+                Some(path) => use_image(&ctx, owner, path),
                 None => ctx.toast("Only images on this computer can be used"),
             },
             Err(err) if err.matches(gtk::DialogError::Dismissed) => {}
@@ -158,32 +213,33 @@ pub fn choose_playlist_image(ctx: &Rc<AppContext>, playlist: &PlaylistObject) {
     });
 }
 
-/// Copies the image at `path` to the app's folder and shows it for playlist `id`.
-fn use_playlist_image(ctx: &Rc<AppContext>, id: PlaylistId, path: PathBuf) {
+/// Copies the image at `path` to the app's folder and shows it for `owner`.
+fn use_image(ctx: &Rc<AppContext>, owner: ImageOwner, path: PathBuf) {
     let weak = Rc::downgrade(ctx);
     let dir = ctx.paths.playlist_images_dir();
     glib::spawn_future_local(async move {
         let imported = {
             let dir = dir.clone();
-            gio::spawn_blocking(move || covers::import_playlist_image(&path, id, &dir)).await
+            let name = owner.file_name();
+            gio::spawn_blocking(move || covers::import_playlist_image(&path, &name, &dir)).await
         };
         let Some(ctx) = weak.upgrade() else { return };
         let image = match imported {
             Ok(Ok(image)) => image,
             Ok(Err(err)) => {
-                log::warn!("Could not use the playlist image: {err}");
+                log::warn!("Could not use the image: {err}");
                 ctx.toast("Couldn’t use that image");
                 return;
             }
             Err(_) => {
-                log::error!("Copying the playlist image panicked");
+                log::error!("Copying the image panicked");
                 ctx.toast("Couldn’t use that image");
                 return;
             }
         };
-        let previous = ctx.store.playlist(id).and_then(|playlist| playlist.image());
-        let saved = ctx.edit_library("save the playlist’s image", |library| {
-            library.set_playlist_image(id, Some(&image))
+        let previous = owner.image(&ctx);
+        let saved = ctx.edit_library(&format!("save {}", owner.describe()), |library| {
+            owner.save(library, Some(&image))
         });
         let replaced = if saved.is_some() {
             previous
@@ -193,22 +249,21 @@ fn use_playlist_image(ctx: &Rc<AppContext>, id: PlaylistId, path: PathBuf) {
         if let Some(unused) = replaced.filter(|unused| saved.is_none() || *unused != image) {
             covers::remove_playlist_image(&dir, &unused);
         }
-        ctx.refresh_playlists();
+        owner.refresh(&ctx);
     });
 }
 
-/// Goes back to showing the covers of `playlist`'s songs.
-pub fn remove_playlist_image(ctx: &Rc<AppContext>, playlist: &PlaylistObject) {
-    let Some(image) = playlist.image() else {
+/// Goes back to showing the covers of `owner`'s songs.
+pub fn remove_image(ctx: &Rc<AppContext>, owner: ImageOwner) {
+    let Some(image) = owner.image(ctx) else {
         return;
     };
-    let id = playlist.playlist_id();
-    let saved = ctx.edit_library("remove the playlist’s image", |library| {
-        library.set_playlist_image(id, None)
+    let saved = ctx.edit_library(&format!("remove {}", owner.describe()), |library| {
+        owner.save(library, None)
     });
     if saved.is_some() {
         covers::remove_playlist_image(&ctx.paths.playlist_images_dir(), &image);
-        ctx.refresh_playlists();
+        owner.refresh(ctx);
     }
 }
 

@@ -360,7 +360,7 @@ impl TrackList {
 
     /// The songs' menu, plus the list's own section if it has one.
     fn context_menu(&self) -> gio::Menu {
-        let menu = track_actions::context_menu(self.ctx());
+        let menu = track_actions::context_menu(self.ctx(), &self.selected_tracks());
         if let Some(extra) = self.imp().menu_section.borrow().as_ref() {
             menu.append_section(None, extra);
         }

@@ -20,6 +20,8 @@ use crate::ui::pages;
 #[boxed_type(name = "MpRoute")]
 pub enum Route {
     Songs,
+    /// The songs the user starred.
+    Favourites,
     Albums,
     Album(AlbumKey),
     Artists,
@@ -39,6 +41,7 @@ impl Route {
         matches!(
             self,
             Route::Songs
+                | Route::Favourites
                 | Route::Albums
                 | Route::Artists
                 | Route::Formats
@@ -52,6 +55,7 @@ impl Route {
     pub fn tag(&self) -> String {
         match self {
             Route::Songs => "songs".into(),
+            Route::Favourites => "favourites".into(),
             Route::Albums => "albums".into(),
             Route::Album(key) => format!("album:{}:{}", key.artist, key.title),
             Route::Artists => "artists".into(),
@@ -67,6 +71,7 @@ impl Route {
     fn build_page(&self, ctx: &Rc<AppContext>) -> adw::NavigationPage {
         let page = match self {
             Route::Songs => pages::songs::build(ctx),
+            Route::Favourites => pages::favourites::build(ctx),
             Route::Albums => pages::albums::build(ctx),
             Route::Album(key) => pages::album::build(ctx, key),
             Route::Artists => pages::artists::build(ctx),

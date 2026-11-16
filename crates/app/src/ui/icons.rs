@@ -32,6 +32,10 @@ pub const ARTIST: &str = "mp-artist-symbolic";
 pub const FORMATS: &str = "mp-formats-symbolic";
 /// The Now Playing page.
 pub const HEADPHONES: &str = "mp-headphones-symbolic";
+/// Favourites, and a song that is one.
+pub const STARRED: &str = "mp-starred-symbolic";
+/// A song that isn't a favourite.
+pub const NON_STARRED: &str = "mp-non-starred-symbolic";
 pub const MUSIC_FOLDER: &str = "mp-music-folder-symbolic";
 pub const OPEN_FOLDER: &str = "mp-open-folder-symbolic";
 
