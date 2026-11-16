@@ -5,7 +5,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use mp_core::files::read_text_limited;
+use mp_core::files::{read_text_limited, write_atomically};
 use serde_json::{Map, Value};
 
 /// Plugins get a small store for settings and state, not a database.
@@ -148,15 +148,6 @@ impl Drop for Storage {
     fn drop(&mut self) {
         self.save(Instant::now());
     }
-}
-
-fn write_atomically(path: &Path, bytes: &[u8]) -> io::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let temp = path.with_extension("json.tmp");
-    std::fs::write(&temp, bytes)?;
-    std::fs::rename(&temp, path)
 }
 
 /// Collects written bytes up to `limit`; writing more fails. Indentation can make the

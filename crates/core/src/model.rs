@@ -30,6 +30,8 @@ pub struct Track {
     pub title: String,
     pub artist: String,
     pub album: String,
+    /// As tagged, or, for an album by several artists whose tags name none, what
+    /// [`crate::collection::infer_album_artists`] files it under.
     pub album_artist: String,
     pub genre: String,
     pub year: Option<u32>,

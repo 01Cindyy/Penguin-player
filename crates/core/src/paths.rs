@@ -87,6 +87,11 @@ impl AppPaths {
         self.data_dir.join("library.db")
     }
 
+    /// The queue as it was when the app quit (see [`crate::Session`]).
+    pub fn session_file(&self) -> PathBuf {
+        self.data_dir.join("session.json")
+    }
+
     /// Full-size cover images extracted by the library scanner.
     pub fn covers_dir(&self) -> PathBuf {
         self.cache_dir.join("covers")

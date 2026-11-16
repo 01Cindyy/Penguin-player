@@ -13,7 +13,9 @@ pub mod model;
 pub mod paths;
 pub mod queue;
 pub mod search;
+pub mod session;
 pub mod settings;
+mod stored_path;
 pub mod util;
 
 pub use app_info::{APP_DIR_NAME, APP_ID, APP_NAME, APP_WEBSITE, VERSION};
@@ -25,6 +27,7 @@ pub use model::{CoverId, Playlist, PlaylistEntry, PlaylistId, PlaylistItemId, Tr
 pub use paths::AppPaths;
 pub use queue::{PlayQueue, RepeatMode};
 pub use search::SearchQuery;
+pub use session::Session;
 pub use settings::{
     ColorSchemePreference, CornerStyle, NowPlayingSidebar, PluginPermissions, Settings,
     Transparency,

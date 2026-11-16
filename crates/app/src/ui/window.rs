@@ -725,6 +725,7 @@ fn primary_menu_button() -> gtk::MenuButton {
     library.append(Some("_Rescan Library"), Some("app.rescan"));
     let menu = gio::Menu::new();
     menu.append_section(None, &library);
+    menu.append(Some("_Keyboard Shortcuts"), Some("app.shortcuts"));
     menu.append(Some(&format!("_About {APP_NAME}")), Some("app.about"));
 
     let button = gtk::MenuButton::builder()

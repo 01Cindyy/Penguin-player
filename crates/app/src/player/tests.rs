@@ -5,7 +5,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use mp_audio::EngineEvent;
-use mp_core::{PlaybackState, PlayerCommand, PlayerEvent, RepeatMode, Settings, TrackId};
+use mp_core::{PlaybackState, PlayerCommand, PlayerEvent, RepeatMode, Session, Settings, TrackId};
 
 use super::*;
 use crate::model::{LibraryStore, test_track};
@@ -534,4 +534,101 @@ fn new_details_of_the_current_track_are_no_change_of_track() {
         "{:?}",
         h.events.borrow()
     );
+}
+
+#[test]
+fn the_queue_of_the_last_run_comes_back_paused_where_it_was() {
+    let h = Harness::new(4);
+    h.player.play_tracks(Harness::ids(&[1, 2, 3, 4]), 1);
+    h.started(2, false);
+    h.player
+        .execute(PlayerCommand::SeekTo(Duration::from_secs(4)));
+    let session = h.player.session();
+    assert_eq!(session.songs.len(), 4);
+    assert_eq!((session.current, session.position_ms), (1, 4000));
+    drop(h);
+
+    // The next run, by which track 4 has left the library.
+    let h = Harness::new(3);
+    let changes = Rc::new(Cell::new(0));
+    let counter = changes.clone();
+    h.player
+        .connect_queue_changed(move |_| counter.set(counter.get() + 1));
+    h.player.restore_session(session.clone());
+    assert_eq!(h.player.queue_tracks(), Harness::ids(&[1, 2, 3]));
+    assert_eq!(h.current(), Some(2));
+    assert_eq!(
+        h.take_calls(),
+        vec![Call::Load(2, false), Call::Seek(Duration::from_secs(4))]
+    );
+    assert_eq!(h.player.position(), 4000);
+    assert_eq!(changes.get(), 1);
+    // The next song is asked for once this one has opened.
+    h.started(2, false);
+    assert_eq!(h.take_calls(), vec![Call::SetNext(Some(3))]);
+
+    // What is queued by then stays.
+    h.player.restore_session(Session {
+        current: 0,
+        ..session
+    });
+    assert_eq!(h.current(), Some(2));
+    assert!(h.take_calls().is_empty());
+}
+
+/// The music may be on a drive that isn't plugged in when the app starts.
+#[test]
+fn a_restored_song_that_cannot_be_opened_leaves_the_queue_as_it_was() {
+    let h = Harness::new(4);
+    h.player.play_tracks(Harness::ids(&[1, 2, 3, 4]), 1);
+    h.started(2, false);
+    let session = h.player.session();
+    drop(h);
+
+    let h = Harness::new(4);
+    h.player.restore_session(session);
+    h.take_calls();
+    h.failed(2);
+    assert_eq!(h.take_calls(), vec![Call::Stop]);
+    assert!(h.errors.borrow().is_empty(), "{:?}", h.errors.borrow());
+    assert_eq!(h.player.queue_position(), Some(1));
+    assert_eq!(h.current(), Some(2));
+    assert_eq!(h.player.state(), PlayerState::Stopped);
+    assert_eq!(h.player.session().current, 1);
+
+    // Pressing play tries it again, and from then on a failure is one like any other.
+    h.player.execute(PlayerCommand::Play);
+    assert_eq!(
+        h.take_calls(),
+        vec![Call::Load(2, true), Call::SetNext(Some(3))]
+    );
+    h.failed(2);
+    assert_eq!(h.errors.borrow().len(), 1);
+    assert_eq!(h.current(), Some(3));
+}
+
+#[test]
+fn a_restored_queue_starts_another_song_from_its_beginning() {
+    let h = Harness::new(3);
+    h.player.play_tracks(Harness::ids(&[1, 2, 3]), 0);
+    h.started(1, false);
+    h.player
+        .execute(PlayerCommand::SeekTo(Duration::from_secs(4)));
+    let session = h.player.session();
+    drop(h);
+
+    // The song that was playing has left the library.
+    let h = Harness::new(3);
+    h.keep_in_library(&[2, 3]);
+    h.take_calls();
+    h.player.restore_session(session);
+    assert_eq!(h.current(), Some(2));
+    assert_eq!(h.take_calls(), vec![Call::Load(2, false)]);
+    assert_eq!(h.player.position(), 0);
+    drop(h);
+
+    let h = Harness::new(3);
+    h.player.restore_session(Session::default());
+    assert_eq!(h.player.queue_len(), 0);
+    assert!(h.take_calls().is_empty());
 }

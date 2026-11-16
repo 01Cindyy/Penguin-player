@@ -1,12 +1,92 @@
 //! Albums and artists derived from the flat track list.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
 use crate::format::AudioFormat;
 use crate::model::{CoverId, Track, TrackId, UNKNOWN_ALBUM};
 use crate::search::normalize;
+
+/// The album artist of albums by several artists whose tags name none.
+pub const VARIOUS_ARTISTS: &str = "Various Artists";
+
+/// Gives tracks without an album artist tag the one their album is filed under, where
+/// the folder they are in says more than the track alone: the tracks of one album are
+/// those in the same folder with the same album title. Without this, an album by
+/// several artists (a compilation, a soundtrack, or one with guests on some tracks)
+/// would be split into one album per artist.
+///
+/// - If the album's other tracks agree on a tagged album artist, it is theirs too.
+/// - If none is tagged and the artists differ, it is the artist every other one starts
+///   with ("Mira" for "Mira" and "Mira feat. Sol"), or else [`VARIOUS_ARTISTS`].
+///
+/// Tracks of an album by one artist are left as they are, as are tracks without an
+/// album title.
+pub fn infer_album_artists(tracks: &mut [Track]) {
+    let mut albums: HashMap<(&Path, String), Vec<usize>> = HashMap::new();
+    for (index, track) in tracks.iter().enumerate() {
+        if let Some(folder) = track.path.parent().filter(|_| !track.album.is_empty()) {
+            let album = (folder, normalize(&track.album));
+            albums.entry(album).or_default().push(index);
+        }
+    }
+    let mut inferred = Vec::new();
+    for members in albums.into_values().filter(|members| members.len() > 1) {
+        let album = || members.iter().map(|&index| &tracks[index]);
+        if album().all(|track| !track.album_artist.is_empty()) {
+            continue;
+        }
+        if let Some(artist) = shared_album_artist(album()) {
+            let untagged = members
+                .iter()
+                .filter(|&&index| tracks[index].album_artist.is_empty());
+            inferred.extend(untagged.map(|&index| (index, artist.clone())));
+        }
+    }
+    for (index, artist) in inferred {
+        tracks[index].album_artist = artist;
+    }
+}
+
+/// The album artist for the untagged tracks among `album`'s (see
+/// [`infer_album_artists`]), or `None` to leave them as they are.
+fn shared_album_artist<'a>(album: impl Iterator<Item = &'a Track>) -> Option<String> {
+    // By normalised name, so the choice doesn't depend on the order of the tracks.
+    let mut tagged: BTreeMap<String, &str> = BTreeMap::new();
+    let mut artists: BTreeMap<String, &str> = BTreeMap::new();
+    for track in album {
+        if track.album_artist.is_empty() {
+            artists
+                .entry(normalize(&track.artist))
+                .or_insert(&track.artist);
+        } else {
+            let name = track.album_artist.as_str();
+            tagged.entry(normalize(name)).or_insert(name);
+        }
+    }
+    match tagged.len() {
+        0 if artists.len() < 2 => None,
+        0 => {
+            let (lead, name) = artists.iter().min_by_key(|(key, _)| key.len())?;
+            let led = !lead.is_empty()
+                && artists.keys().all(|artist| {
+                    artist
+                        .strip_prefix(lead.as_str())
+                        .is_some_and(|rest| !rest.starts_with(|next: char| next.is_alphanumeric()))
+                });
+            Some(if led {
+                (*name).to_owned()
+            } else {
+                VARIOUS_ARTISTS.to_owned()
+            })
+        }
+        1 => tagged.into_values().next().map(str::to_owned),
+        // Two albums with one title in one folder: nothing says which a track is on.
+        _ => None,
+    }
+}
 
 /// Identifies an album by normalised album artist and title, so differences in
 /// capitalisation or accents between tracks don't split one album into two.
@@ -183,6 +263,114 @@ mod tests {
         assert_eq!(singer.track_count, 2);
         assert_eq!(singer.albums[0].title, "album b");
         assert_eq!(singer.cover, Some(CoverId("b.jpg".into())));
+    }
+
+    /// Tracks in `folder`, as (title, artist, album, album artist).
+    fn folder(folder: &str, songs: &[(&str, &str, &str, &str)]) -> Vec<Track> {
+        songs
+            .iter()
+            .enumerate()
+            .map(|(index, (title, artist, album, album_artist))| {
+                let mut song = track(index as i64, title, artist, album);
+                song.path = format!("/music/{folder}/{title}.flac").into();
+                song.album_artist = (*album_artist).to_owned();
+                song
+            })
+            .collect()
+    }
+
+    fn album_artists(tracks: &[Track]) -> Vec<&str> {
+        tracks
+            .iter()
+            .map(|track| track.album_artist.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn albums_by_several_artists_stay_together() {
+        let mut tracks = folder(
+            "Summer Mix",
+            &[
+                ("One", "Mira", "Summer Mix", ""),
+                ("Two", "Sol", "Summer Mix", ""),
+                ("Three", "", "Summer Mix", ""),
+                ("Loose", "Someone", "", ""),
+                ("Other", "Someone Else", "", ""),
+            ],
+        );
+        infer_album_artists(&mut tracks);
+        assert_eq!(
+            album_artists(&tracks),
+            [VARIOUS_ARTISTS, VARIOUS_ARTISTS, VARIOUS_ARTISTS, "", ""]
+        );
+        let albums = group_albums(&tracks);
+        let mix = albums.iter().find(|a| a.title == "Summer Mix").unwrap();
+        assert_eq!(
+            (mix.artist.as_str(), mix.tracks.len()),
+            (VARIOUS_ARTISTS, 3)
+        );
+    }
+
+    #[test]
+    fn albums_with_guests_are_filed_under_their_artist() {
+        let mut tracks = folder(
+            "Tides",
+            &[
+                ("One", "Mira feat. Sol", "Tides", ""),
+                ("Two", "mira", "TIDES", ""),
+                ("Three", "Mira & The Band", "Tides", ""),
+            ],
+        );
+        infer_album_artists(&mut tracks);
+        assert_eq!(album_artists(&tracks), ["mira", "mira", "mira"]);
+        assert_eq!(group_albums(&tracks).len(), 1);
+
+        // "Mirage" only starts with the same letters.
+        let mut tracks = folder(
+            "Mixed",
+            &[("One", "Mira", "Mixed", ""), ("Two", "Mirage", "Mixed", "")],
+        );
+        infer_album_artists(&mut tracks);
+        assert_eq!(album_artists(&tracks), [VARIOUS_ARTISTS, VARIOUS_ARTISTS]);
+    }
+
+    #[test]
+    fn untagged_tracks_take_the_album_artist_of_their_album() {
+        let mut tracks = folder(
+            "Tides",
+            &[
+                ("One", "Mira", "Tides", "Mira"),
+                ("Two", "Mira feat. Sol", "Tides", ""),
+                ("Three", "Sol", "Tides", ""),
+            ],
+        );
+        infer_album_artists(&mut tracks);
+        assert_eq!(album_artists(&tracks), ["Mira", "Mira", "Mira"]);
+
+        // Two albums of one title in one folder: nothing says which the third is on.
+        let mut tracks = folder(
+            "Hits",
+            &[
+                ("One", "Mira", "Hits", "Mira"),
+                ("Two", "Sol", "Hits", "Sol"),
+                ("Three", "Ana", "Hits", ""),
+            ],
+        );
+        infer_album_artists(&mut tracks);
+        assert_eq!(album_artists(&tracks), ["Mira", "Sol", ""]);
+    }
+
+    #[test]
+    fn albums_by_one_artist_and_albums_in_other_folders_are_left_alone() {
+        let mut tracks = folder(
+            "Mira/Hits",
+            &[("One", "Mira", "Hits", ""), ("Two", "Mira", "Hits", "")],
+        );
+        tracks.extend(folder("Sol/Hits", &[("Three", "Sol", "Hits", "")]));
+        let before = tracks.clone();
+        infer_album_artists(&mut tracks);
+        assert_eq!(tracks, before);
+        assert_eq!(group_albums(&tracks).len(), 2);
     }
 
     #[test]

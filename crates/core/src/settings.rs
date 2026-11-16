@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::files::write_atomically;
 use crate::queue::RepeatMode;
 
 pub const DEFAULT_THEME_ID: &str = "adwaita";
@@ -150,7 +151,7 @@ impl PluginPermissions {
 #[serde(default)]
 pub struct Settings {
     /// Root folder of the music library. `None` until the user picks one.
-    #[serde(with = "stored_path")]
+    #[serde(with = "crate::stored_path")]
     pub music_folder: Option<PathBuf>,
     /// Watch the music folder and update the library automatically.
     pub watch_music_folder: bool,
@@ -250,15 +251,10 @@ impl Settings {
         }
     }
 
-    /// Writes atomically (temp file + rename) so a crash can't leave a half-written file.
+    /// Writes atomically, so a crash can't leave a half-written file.
     pub fn save(&self, path: &Path) -> io::Result<()> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
         let json = serde_json::to_string_pretty(self).map_err(io::Error::other)?;
-        let temp = path.with_extension("json.tmp");
-        std::fs::write(&temp, json)?;
-        std::fs::rename(&temp, path)
+        write_atomically(path, json.as_bytes())
     }
 
     /// Penguin Player 1.0 stored the volume as the output's gain, under `volume`. Its
@@ -288,68 +284,6 @@ impl Settings {
             self.theme = DEFAULT_THEME_ID.to_owned();
         }
         self
-    }
-}
-
-/// A path in `settings.json`: a string, or, for a path that isn't valid Unicode
-/// (possible on Unix, e.g. Latin-1 folder names from an old disk), its bytes as an
-/// array of numbers. serde's own `Path` support refuses such paths, which would make
-/// every save fail.
-mod stored_path {
-    use std::path::PathBuf;
-
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    #[derive(Serialize, Deserialize)]
-    #[serde(untagged)]
-    enum StoredPath {
-        Text(String),
-        Bytes(Vec<u8>),
-    }
-
-    pub fn serialize<S: Serializer>(
-        path: &Option<PathBuf>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let stored = path.as_ref().map(|path| match path.to_str() {
-            Some(text) => StoredPath::Text(text.to_owned()),
-            None => to_bytes(path),
-        });
-        stored.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<Option<PathBuf>, D::Error> {
-        let stored = Option::<StoredPath>::deserialize(deserializer)?;
-        Ok(stored.and_then(|stored| match stored {
-            StoredPath::Text(text) => Some(PathBuf::from(text)),
-            StoredPath::Bytes(bytes) => from_bytes(bytes),
-        }))
-    }
-
-    #[cfg(unix)]
-    fn to_bytes(path: &std::path::Path) -> StoredPath {
-        use std::os::unix::ffi::OsStrExt;
-        StoredPath::Bytes(path.as_os_str().as_bytes().to_vec())
-    }
-
-    #[cfg(unix)]
-    fn from_bytes(bytes: Vec<u8>) -> Option<PathBuf> {
-        use std::os::unix::ffi::OsStringExt;
-        Some(std::ffi::OsString::from_vec(bytes).into())
-    }
-
-    /// Paths elsewhere are Unicode but for rare unpaired surrogates on Windows, which
-    /// are replaced.
-    #[cfg(not(unix))]
-    fn to_bytes(path: &std::path::Path) -> StoredPath {
-        StoredPath::Text(path.to_string_lossy().into_owned())
-    }
-
-    #[cfg(not(unix))]
-    fn from_bytes(_bytes: Vec<u8>) -> Option<PathBuf> {
-        None
     }
 }
 

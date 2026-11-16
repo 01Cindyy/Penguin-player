@@ -76,6 +76,14 @@ the device's latency) and analyses it with `mp_audio::Spectrum`. Visualisers hol
 5. Every `PlayerCommand` (UI buttons, keyboard shortcuts, MPRIS, plugins) goes through
    one `Player::execute` method, so behaviour is identical whichever source issues it.
 6. The player broadcasts `mp_core::PlayerEvent`s to the plugin host and media controls.
+7. On quitting, `AppContext::shutdown` saves the queue and the place in it as a
+   `mp_core::Session` (`session.json`, songs named by their files). The next run brings
+   it back once the library has loaded (`Player::restore_session`): the same song,
+   paused where it was, without the songs that have left the library. If that song
+   can't be opened, as with its drive not plugged in yet, the queue comes back all the
+   same and nothing is skipped or reported (`PendingLoad::restored`). Songs the app
+   was started to open take its place instead. It is only saved when the app quits, so
+   after a crash the queue of the last normal quit comes back.
 
 ### Library
 
@@ -87,17 +95,31 @@ the device's latency) and analyses it with `mp_audio::Spectrum`. Visualisers hol
 - The worker turns tracks into a `model::LibrarySnapshot`: the tracks in the order
   `Library::tracks()` gives them (`mp_core::collection::library_order`, which is also
   the Songs page's default order), the albums and the artists derived from them with
-  `mp_core::collection`, format counts and the normalised search text of every track
-  and album. The main thread only swaps it into the `LibraryStore` (`gio::ListStore`s
-  of GObject wrappers), reusing the objects of unchanged items so views keep their
-  state.
+  `mp_core::collection`, format counts and the normalised search text of every album
+  (tracks make theirs on the first search). The main thread only swaps it into the
+  `LibraryStore` (`gio::ListStore`s of GObject wrappers), reusing the objects of
+  unchanged items so views keep their state.
+- Albums are told apart by album artist and title. `Library::tracks()` gives tracks
+  whose tags name no album artist the one their album is filed under, where the other
+  tracks with that album title in the same folder show it isn't simply the track's
+  artist (`mp_core::collection::infer_album_artists`): the album artist the others are
+  tagged with, the artist all of them start with ("Mira" for "Mira feat. Sol"), or
+  "Various Artists". So a compilation stays one album. The database keeps the tags as
+  they are; this is worked out on every load.
 - Views put GTK's filter and sort models on top of the store's lists, and the store
   splices only what a refresh changed (`model::sync_list_store`).
 - Choosing another music folder cancels a scan of the previous one
   (`Library::scan_cancellable`).
 - The watcher reports changed paths in debounced batches → `scan_paths()` on the worker.
   With inotify it watches each visible folder itself, leaving hidden ones (`.git`,
-  `.Trash-1000`) out, as scans do.
+  `.Trash-1000`) out, as scans do. Linux limits how many folders a user's apps may
+  watch between them; past that limit the rest of the music folder goes unwatched
+  (`LibraryWatcher::is_limited`), which a toast and the Watch for Changes row in
+  Preferences say. The scan at the next start, or Rescan Library, finds what changed
+  there.
+- A scan that removed songs also deletes the lyrics and waveforms kept for them
+  (`mp_core::files::remove_cache_files_of_other_songs`), as full scans delete covers
+  that no track uses any more.
 - A missing or emptied music folder (an unplugged drive) leaves the library untouched
   and shows a banner. While it is missing, every newly mounted drive triggers a scan;
   the first scan that finds the folder again clears the banner and restarts watching.
@@ -172,9 +194,12 @@ crates/app/
     css/discover.css        Search, formats, preferences.
     icons/                  Bundled symbolic icons (see its README for licence).
   src/
-    main.rs, lib.rs         Logging and start-up.
+    main.rs, lib.rs         Logging and start-up. What must be set before GTK starts: the
+                            renderer (Low Memory Mode, Windows) and glibc's memory pools.
     application.rs          AdwApplication: stylesheet, actions, accelerators, startup.
     context.rs              AppContext: shared handles (paths, settings, store, player, ...).
+                            Saves settings and, on quitting, the queue.
+    memory.rs               Hands freed memory back to the system (glibc only).
     display.rs              DisplayOptions: settings several widgets follow (visualiser,
                             quality details), as properties to bind to.
     screenshot.rs           Debug builds: render the window to a PNG (see below).
@@ -185,7 +210,8 @@ crates/app/
                             PlaylistObject) and LibraryStore / LibrarySnapshot.
     services/
       library.rs            The library worker: load, scan, watch, clear.
-      covers.rs             Cover art at display size: LRU in memory, PNG thumbnails on disk.
+      covers.rs             Cover art at display size: LRU in memory, thumbnails on disk
+                            (JPEG, or PNG for covers with transparency).
       theme.rs              ThemeManager: applies themes and the appearance options,
                             live reload (user themes, pywal's colors.json), colour scheme.
       blur.rs               Blur behind the translucent window (Wayland, cfg-gated).
@@ -207,7 +233,9 @@ crates/app/
       context_menu.rs       Right-click, long press and Menu key, the same everywhere.
       track_actions.rs      Play next, add to queue or playlist, go to album or artist,
                             show in folder.
-      shortcuts.rs          Playback keys that don't steal keys from text fields.
+      shortcuts.rs          Playback keys that don't steal keys from text fields, the
+                            accelerators, and the Keyboard Shortcuts dialog, which lists
+                            both from the tables that bind them.
       icons.rs              One constant per bundled icon.
       mod.rs                Small shared helpers (empty states, breakpoints, keep_alive).
       pages/                One module per page: songs, albums, album, artists, artist,
@@ -264,7 +292,7 @@ The app stays responsive with libraries of 50,000 songs and more. What keeps it 
 - Walking a `gtk::FilterListModel` item by item is slow on large libraries. To count
   or total what a filter lets through, walk the store with the same predicate (see
   the Songs and Format pages).
-- Covers are decoded off the main thread at the size they are shown, kept in a 64 MB
+- Covers are decoded off the main thread at the size they are shown, kept in a 32 MB
   LRU and cached on disk as thumbnails.
 
 Measured with a synthetic library of 50,000 tagged files in 5,000 albums (release
@@ -275,12 +303,32 @@ build, files on tmpfs, 1024×768 window):
 | First scan of a new library | about 1.0 s, in the background |
 | Start to first frame | about 0.22 s |
 | Start to the full library shown (warm start) | about 0.58 s |
-| Memory (RSS) after browsing every page | about 240 MB (110 MB without a library) |
 | First search | about 60 ms, including building the search page |
 | Later searches | 3–9 ms |
 | Switching to Albums or Artists | about 70 ms |
 | Switching to Songs | about 140 ms |
 | Opening an album or artist | about 25 ms |
+
+### Memory
+
+Most of what a memory monitor shows for the app is not its own data: GTK's GPU
+renderers load graphics driver and system libraries, about 310 MB of them with an
+NVIDIA card. In the memory review of November 2026 (20,000 songs, after visiting every
+page and playing a song) the app's own memory was about 200 MB of about 500 MB shown.
+What keeps its own part down:
+
+- The cover cache is 32 MB, and is emptied once the window has been in the background
+  for five minutes (`CoverCache::release_in_background`). Covers on screen stay.
+- glibc keeps freed memory for reuse, in a pool per busy thread. `main` limits the
+  pools to two (`M_ARENA_MAX`), and `memory::release_soon` hands freed memory back a
+  few seconds after a page closes, a library load or a scan (`malloc_trim`).
+- Thumbnails are JPEG, the databases' page caches are 256 KB each, and tracks make
+  their search text on the first search rather than on every load.
+- **Low Memory Mode** (Preferences → General, off by default) draws with GTK's
+  software renderer, which loads none of those libraries: about 230 MB shown in the
+  same test, for more processor use and less smooth animation. GTK chooses its
+  renderer once, so `main` reads the setting and sets `GSK_RENDERER=cairo` before GTK
+  starts, and the switch takes effect at the next start.
 
 ## Theming contract
 
@@ -384,9 +432,13 @@ under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
 | `<pywal cache>/colors.json` | `~/.cache/wal/` | Read only: the Pywal theme's palette (`mp_theme::pywal_dir`) |
 | `<config>/plugins/<id>/plugin.json` | | User plugins |
 | `<data>/library.db` | `~/.local/share/penguin-player/` | SQLite library |
+| `<data>/session.json` | | The queue and the place in it when the app quit (`mp_core::Session`) |
+| `<data>/playlist-images/` | | Images the user chose for playlists |
 | `<data>/plugin-data/` | | Plugin storage |
 | `<cache>/covers/`, `<cache>/thumbnails/` | `~/.cache/penguin-player/` | Extracted and downscaled cover art |
-| `<cache>/lyrics/` | | Lyrics that plugins found, by a hash of the song's path |
+| `<cache>/opened-covers/` | | Covers of songs opened from outside the library, emptied when the app quits |
+| `<cache>/lyrics/` | | Lyrics that plugins found, named after the song's path (`mp_core::files::song_cache_key`) |
+| `<cache>/waveforms/` | | What the Waveform Seek Bar shows, named the same way |
 
 ## Conventions
 
@@ -395,6 +447,16 @@ under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
   checks it).
 - Files from folders users fill (themes, plugins) are read with `mp_core::files`: regular
   files only, size-limited, never outside their folder.
+- Files the app can't make again (settings, plugin storage, the session) are written
+  with `mp_core::files::write_atomically`, so a crash or power cut leaves the old file
+  or the new one.
+- `rust-version` in `Cargo.toml`, which the README repeats, is the oldest Rust the app
+  builds with: the one gtk4-rs needs. Cargo keeps `cargo update` to crate versions that
+  build with it, and clippy (`incompatible_msrv`) flags standard library items newer
+  than it. Raise it, and the README, when a dependency has to.
+- A new file format goes into `mp_core::format::SUPPORTED_EXTENSIONS`, the launcher's
+  `MimeType` and the Windows installer's file types; a test in
+  `services/opened_files.rs` checks that the three agree.
 - Library crates return `thiserror` error enums; the app logs with `log` and tells the
   user through toasts. Never panic on user data; `expect` only for real invariants,
   with a message explaining why it can't fail.
@@ -415,11 +477,11 @@ under `<dir>` with `PENGUIN_PLAYER_HOME=<dir>`):
 | Variable | Effect |
 |---|---|
 | `RUST_LOG=debug` | Verbose logging (`env_logger`). |
-| `GSK_RENDERER=vulkan\|gl\|cairo` | GTK's renderer. On Windows the app picks `vulkan` unless this is set, as GTK's default there (OpenGL) lagged on some PCs; GTK falls back to its usual choice where Vulkan doesn't start. |
+| `GSK_RENDERER=vulkan\|gl\|cairo` | GTK's renderer. Unless this is set, the app picks `cairo` with Low Memory Mode on, and otherwise `vulkan` on Windows, as GTK's default there (OpenGL) lagged on some PCs; GTK falls back to its usual choice where Vulkan doesn't start. |
 | `PENGUIN_PLAYER_HOME=<dir>` | Keep config/data/cache under `<dir>` (portable mode; safe testing). |
 | `PENGUIN_PLAYER_NULL_AUDIO=1` | Decode in real time but discard audio (no sound device). |
 | `PENGUIN_PLAYER_SCREENSHOT=<file.png>` | Debug builds: render the window to a PNG once loaded, then quit. |
-| `PENGUIN_PLAYER_SCREENSHOT_PAGE=<page>` | Page to open first: `songs`, `albums`, `artists`, `formats`, `queue`, `settings[:appearance\|plugins]`, `search:<query>`, `album:<title>`, `artist:<name>`, `playlist:<name>`, `format:<id>`. |
+| `PENGUIN_PLAYER_SCREENSHOT_PAGE=<page>` | Page to open first: `songs`, `albums`, `artists`, `formats`, `now-playing`, `queue`, `settings[:appearance\|plugins]`, `search:<query>`, `album:<title>`, `artist:<name>`, `playlist:<name>`, `format:<id>`. |
 | `PENGUIN_PLAYER_SCREENSHOT_SCHEME=light\|dark` | Force the colour scheme. |
 | `PENGUIN_PLAYER_SCREENSHOT_PLAY=<n>` | Play the library from track `n` first (only with `PENGUIN_PLAYER_NULL_AUDIO=1`). |
 | `PENGUIN_PLAYER_SCREENSHOT_DELAY=<seconds>` | Wait this long after opening the page (default 1). |

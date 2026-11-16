@@ -62,6 +62,9 @@ pub struct Player {
 pub(super) struct PendingLoad {
     pub(super) track: TrackId,
     pub(super) autoplay: bool,
+    /// The song the last run ended on, brought back when the app starts. If it can't
+    /// be opened, nothing moves on: its drive may just not be plugged in yet.
+    pub(super) restored: bool,
 }
 
 // Property writes (e.g. from a two-way binding to a slider) go through the same code

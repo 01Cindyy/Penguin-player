@@ -8,4 +8,4 @@ Terminal=false
 Categories=AudioVideo;Audio;Player;GTK;
 Keywords=music;audio;player;playlist;flac;library;
 StartupNotify=true
-MimeType=audio/flac;audio/x-flac;audio/mpeg;audio/mp3;audio/x-mp3;audio/mp4;audio/x-m4a;audio/x-m4b;audio/aac;audio/x-aac;audio/ogg;audio/x-vorbis+ogg;audio/x-opus+ogg;audio/vnd.wave;audio/wav;audio/x-wav;audio/x-aiff;audio/aiff;audio/x-aifc;audio/matroska;audio/x-matroska;
+MimeType=audio/flac;audio/x-flac;audio/mpeg;audio/mp3;audio/x-mp3;audio/mp4;audio/x-m4a;audio/x-m4b;audio/aac;audio/x-aac;audio/ogg;audio/x-vorbis+ogg;audio/x-opus+ogg;audio/vnd.wave;audio/wav;audio/x-wav;audio/x-aiff;audio/aiff;audio/x-aifc;audio/matroska;audio/x-matroska;audio/webm;

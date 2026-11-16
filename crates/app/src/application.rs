@@ -5,21 +5,12 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::{gdk, gio, glib};
-use mp_core::{APP_ID, APP_NAME, PlayerCommand, VERSION};
+use mp_core::{APP_ID, APP_NAME, APP_WEBSITE, PlayerCommand, VERSION};
 
 use crate::context::AppContext;
 use crate::player::VOLUME_STEP;
 use crate::ui::window::MainWindow;
-use crate::ui::{icons, preferences};
-
-/// Accelerators for actions that never conflict with typing. Playback shortcuts
-/// (Space, Ctrl+arrows, …) are handled in [`crate::ui::shortcuts`] instead.
-const ACCELERATORS: &[(&str, &[&str])] = &[
-    ("app.quit", &["<Primary>q"]),
-    ("app.preferences", &["<Primary>comma"]),
-    ("app.search", &["<Primary>f"]),
-    ("app.toggle-queue", &["<Primary>l"]),
-];
+use crate::ui::{icons, preferences, shortcuts};
 
 /// Runs the application until it quits.
 pub fn run() -> glib::ExitCode {
@@ -197,6 +188,7 @@ fn install_actions(ctx: &Rc<AppContext>) {
         window_action("toggle-queue", |_, window| {
             window.set_queue_visible(!window.is_queue_visible());
         }),
+        window_action("shortcuts", |_, window| shortcuts::present(window)),
         window_action("about", |_, window| show_about(window)),
         player_action("play-pause", |ctx| {
             ctx.player.execute(PlayerCommand::TogglePlayPause);
@@ -215,7 +207,8 @@ fn install_actions(ctx: &Rc<AppContext>) {
         player_action("volume-down", |ctx| ctx.player.change_volume(-VOLUME_STEP)),
         player_action("rescan", |ctx| ctx.library_service.rescan(false)),
     ]);
-    for (action, accels) in ACCELERATORS {
+    // Playback shortcuts (Space, Ctrl+arrows, …) are the window's: see `shortcuts`.
+    for (action, accels) in shortcuts::ACCELERATORS {
         app.set_accels_for_action(action, accels);
     }
 }
@@ -226,6 +219,8 @@ fn show_about(window: &MainWindow) {
         .application_icon(APP_ID)
         .version(VERSION)
         .comments("Your music library, offline and in full quality.")
+        .website(APP_WEBSITE)
+        .issue_url(format!("{APP_WEBSITE}/issues"))
         .license_type(gtk::License::MitX11)
         .build();
     about.add_legal_section(

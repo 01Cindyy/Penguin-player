@@ -44,7 +44,6 @@ fn folder_group(ctx: &Rc<AppContext>) -> adw::PreferencesGroup {
 
     let watch = adw::SwitchRow::builder()
         .title("Watch for Changes")
-        .subtitle("Update the library when files are added, changed or removed")
         .active(ctx.settings().watch_music_folder)
         .build();
     watch.connect_active_notify(glib::clone!(
@@ -69,7 +68,26 @@ fn folder_group(ctx: &Rc<AppContext>) -> adw::PreferencesGroup {
         move |service| unavailable.set_visible(service.folder_missing())
     ));
     disconnect_on_destroy(&group, service, handler);
+
+    watch.set_subtitle(watch_subtitle(service.watch_limited()));
+    let handler = service.connect_watch_limited_notify(glib::clone!(
+        #[weak]
+        watch,
+        move |service| watch.set_subtitle(watch_subtitle(service.watch_limited()))
+    ));
+    disconnect_on_destroy(&group, service, handler);
     group
+}
+
+/// What watching does, or, when Linux lets the user's apps watch no more folders, why
+/// it only does part of it.
+fn watch_subtitle(limited: bool) -> &'static str {
+    if limited {
+        "Only part of the folder is watched: the system’s limit on watched folders \
+         (fs.inotify.max_user_watches) is reached. Rescan Library finds changes in the rest."
+    } else {
+        "Update the library when files are added, changed or removed"
+    }
 }
 
 /// The chosen folder, with a button to choose another.

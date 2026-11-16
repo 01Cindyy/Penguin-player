@@ -6,7 +6,9 @@ use std::time::Duration;
 
 use adw::prelude::*;
 use gtk::glib;
-use mp_core::{APP_DIR_NAME, AppPaths, ColorSchemePreference, CornerStyle, Settings, Transparency};
+use mp_core::{
+    APP_DIR_NAME, AppPaths, ColorSchemePreference, CornerStyle, Session, Settings, Transparency,
+};
 use mp_library::Library;
 
 use crate::display::DisplayOptions;
@@ -50,6 +52,8 @@ pub struct AppContext {
     pending_save: RefCell<Option<glib::SourceId>>,
     /// Whether the last save failed, so the user is told once rather than on every change.
     save_failed: Cell<bool>,
+    /// True until the last run's queue has been brought back, or is no longer wanted.
+    session_pending: Cell<bool>,
     toasts: adw::ToastOverlay,
     window: glib::WeakRef<gtk::Window>,
     /// Blur behind the window, once the window has a surface.
@@ -84,6 +88,7 @@ impl AppContext {
             settings: RefCell::new(settings),
             pending_save: RefCell::default(),
             save_failed: Cell::new(false),
+            session_pending: Cell::new(true),
             toasts: adw::ToastOverlay::new(),
             window: glib::WeakRef::new(),
             blur: RefCell::default(),
@@ -125,6 +130,7 @@ impl AppContext {
         // Plugins first: their shutdown handlers may still change settings.
         self.plugins.shutdown();
         self.save_settings_now();
+        self.save_session();
         self.player.shutdown();
         self.waveforms.show(None);
         // Covers of songs from outside the library are only kept while the app runs.
@@ -159,9 +165,38 @@ impl AppContext {
         }
     }
 
-    fn schedule_settings_save(&self) {
-        if self.pending_save.borrow().is_some() {
+    /// Brings back the queue the last run ended with, with its song ready where it
+    /// was but not playing. Call once the library has loaded: the queue names its songs
+    /// by their files. Only the first call does anything.
+    pub fn restore_session(&self) {
+        if self.session_pending.replace(false)
+            && let Some(session) = Session::load(&self.paths.session_file())
+        {
+            self.player.restore_session(session);
+        }
+    }
+
+    /// Leaves the last run's queue where it is, for when songs are opened in its place.
+    pub fn forget_session(&self) {
+        self.session_pending.set(false);
+    }
+
+    /// Keeps the queue for the next run. While the last run's is still waiting for the
+    /// library, the queue is empty and saving it would lose that one.
+    fn save_session(&self) {
+        if self.session_pending.get() {
             return;
+        }
+        if let Err(err) = self.player.session().save(&self.paths.session_file()) {
+            log::error!("Could not save the queue: {err}");
+        }
+    }
+
+    fn schedule_settings_save(&self) {
+        // Every change starts the wait again: the save waits for the disk, which
+        // would stutter in the middle of a drag.
+        if let Some(source) = self.pending_save.take() {
+            source.remove();
         }
         let ctx = self.this.clone();
         let source = glib::timeout_add_local_once(SETTINGS_SAVE_DELAY, move || {

@@ -7,7 +7,8 @@
 # Everything happens in a rootless Podman container with Debian 13 (see Containerfile),
 # so the packages run on Debian 13, Ubuntu 25.04, Fedora 42 and anything newer,
 # whichever distribution builds them. The source folder is mounted read-only, and the
-# build itself has no network: crates are downloaded in a step of their own first.
+# build itself has no network: crates are downloaded, and checked for known
+# vulnerabilities, in steps of their own first.
 #
 # Needs podman, and no administrator rights.
 
@@ -62,6 +63,9 @@ run() {
 
 say "Downloading crates..."
 run "$IMAGE" cargo fetch --locked
+say "Checking the crates for known vulnerabilities..."
+run "$IMAGE" cargo audit ||
+    fail "cargo audit found a vulnerable crate, or couldn't check: see packaging/README.md"
 say "Building Penguin Player $version and its packages..."
 run --network=none "$IMAGE" /src/packaging/make-packages.sh "$version"
 

@@ -4,6 +4,7 @@
 //! so scans never overlap. Results come back to the main thread as [`Update`]s.
 
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,6 +14,7 @@ use std::time::{Duration, Instant};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
+use mp_core::files::{remove_cache_files_of_other_songs, song_cache_key};
 use mp_core::{PlayerEvent, Playlist};
 use mp_library::{Library, LibraryError, LibraryWatcher, ScanOptions, ScanProgress, ScanSummary};
 
@@ -48,6 +50,9 @@ enum Update {
     /// The music folder is missing, or empty while the library has tracks in it (often
     /// an unplugged drive). The scan changed nothing.
     FolderUnavailable(PathBuf),
+    /// Whether the system's limit on watched folders leaves part of the music folder
+    /// unwatched.
+    WatchLimited(bool),
     Error(String),
 }
 
@@ -79,6 +84,10 @@ mod imp {
         /// The library is left untouched meanwhile.
         #[property(get)]
         pub(super) folder_missing: Cell<bool>,
+        /// True while only part of the music folder is watched for changes, because
+        /// the system's limit on watched folders is reached.
+        #[property(get)]
+        pub(super) watch_limited: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -210,6 +219,8 @@ impl LibraryService {
                 ctx.store.replace(snapshot);
                 ctx.store.set_playlists(playlists);
                 ctx.covers.library_changed();
+                // The first time, the songs of the last run's queue are known now.
+                ctx.restore_session();
                 ctx.player
                     .broadcast(PlayerEvent::LibraryUpdated { track_count });
                 // The old library data and the work of loading it are freed by now.
@@ -229,6 +240,9 @@ impl LibraryService {
                 if summary.removed + summary.updated > 0 {
                     ctx.covers.remove_unused_thumbnails();
                 }
+                if summary.removed > 0 && ctx.store.loaded() {
+                    remove_caches_of_removed_songs(ctx);
+                }
                 if let Some(message) = summary_message(&summary) {
                     ctx.toast(&message);
                 }
@@ -238,6 +252,13 @@ impl LibraryService {
                 log::warn!("Music folder {} is unavailable", folder.display());
                 self.set_scanning(false);
                 self.set_folder_missing(true);
+            }
+            Update::WatchLimited(limited) => {
+                self.imp().watch_limited.set(limited);
+                self.notify_watch_limited();
+                if limited {
+                    ctx.toast("Only part of the music folder can be watched for changes");
+                }
             }
             Update::Error(message) => {
                 log::error!("{message}");
@@ -289,6 +310,20 @@ impl LibraryService {
         });
         mounts.replace(Some((monitor, handler)));
     }
+}
+
+/// Deletes, in the background, the lyrics and waveforms kept for songs that are no
+/// longer in the library. Both caches name their files after the song's path.
+fn remove_caches_of_removed_songs(ctx: &AppContext) {
+    let songs = ctx.store.track_paths();
+    let caches = [ctx.paths.lyrics_dir(), ctx.paths.waveforms_dir()];
+    drop(gio::spawn_blocking(move || {
+        let keys: HashSet<String> = songs.keys().map(|path| song_cache_key(path)).collect();
+        for cache in caches {
+            let removed = remove_cache_files_of_other_songs(&cache, &keys);
+            log::debug!("Removed {removed} files from {}", cache.display());
+        }
+    }));
 }
 
 /// A short toast describing what a scan changed, or `None` if there is nothing to say.
@@ -351,13 +386,17 @@ fn run_worker(
         library_outdated: false,
         options: None,
         watcher: None,
+        watch_limited: false,
     };
     while let Ok(job) = jobs.recv() {
         match job {
             Job::Load => worker.send_library(),
             Job::Scan { options, folder } => worker.scan(options, folder),
             Job::Changed(paths) => worker.scan_paths(&paths),
-            Job::Watch(options) => worker.watch(options),
+            Job::Watch(options) => {
+                worker.watch(options);
+                worker.report_watch_limit();
+            }
             Job::ClearTracks => worker.clear_tracks(),
         }
     }
@@ -375,6 +414,8 @@ struct Worker {
     /// Options for scanning paths reported by the watcher.
     options: Option<ScanOptions>,
     watcher: Option<LibraryWatcher>,
+    /// What the UI was last told about [`LibraryWatcher::is_limited`].
+    watch_limited: bool,
 }
 
 impl Worker {
@@ -428,6 +469,8 @@ impl Worker {
         let summary = match result {
             Ok(summary) => {
                 self.resume_watching();
+                // The scan may have followed new folders, which the watcher took on.
+                self.report_watch_limit();
                 summary
             }
             // The library refuses to scan an unavailable folder rather than empty itself.
@@ -498,6 +541,17 @@ impl Worker {
             ))),
         }
     }
+
+    /// Tells the UI when the watcher starts or stops being short of folders it may watch.
+    fn report_watch_limit(&mut self) {
+        let limited = self
+            .watcher
+            .as_ref()
+            .is_some_and(LibraryWatcher::is_limited);
+        if std::mem::replace(&mut self.watch_limited, limited) != limited {
+            self.send(Update::WatchLimited(limited));
+        }
+    }
 }
 
 /// Forwards scan progress to the UI, throttled to [`PROGRESS_INTERVAL`].
@@ -542,6 +596,7 @@ mod tests {
             library_outdated: false,
             options: None,
             watcher: None,
+            watch_limited: false,
         };
         (worker, receiver)
     }

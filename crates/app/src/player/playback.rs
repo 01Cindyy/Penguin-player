@@ -146,7 +146,30 @@ impl Player {
     /// Opens `track` in the engine and publishes it as the current track. A track that
     /// has disappeared from the library is treated like one that failed to open.
     pub(super) fn load(&self, track: TrackId, autoplay: bool) {
-        let pending = PendingLoad { track, autoplay };
+        self.open(PendingLoad {
+            track,
+            autoplay,
+            restored: false,
+        });
+        self.sync_next();
+    }
+
+    /// Opens the song the last run ended on, ready to play from `position`. Unlike
+    /// [`Self::load`] it asks for nothing else until the engine has opened it: if it
+    /// can't be, the queue stays as it is (see [`PendingLoad::restored`]).
+    pub(super) fn load_restored(&self, track: TrackId, position: Duration) {
+        self.open(PendingLoad {
+            track,
+            autoplay: false,
+            restored: true,
+        });
+        if !position.is_zero() {
+            self.seek(position);
+        }
+    }
+
+    fn open(&self, pending: PendingLoad) {
+        let track = pending.track;
         let Some(object) = self.store().track(track) else {
             self.imp().pending_load.set(Some(pending));
             self.on_track_failed(track, "the file is no longer in the library");
@@ -156,11 +179,10 @@ impl Player {
             self.imp().pending_load.set(Some(pending));
         }
         let path = object.track().path.clone();
-        self.with_backend(|backend| backend.load(track, path, autoplay));
+        self.with_backend(|backend| backend.load(track, path, pending.autoplay));
         self.set_current_track(Some(&object));
         self.set_duration(object.track().duration_ms);
         self.set_position(0);
-        self.sync_next();
     }
 
     /// Tells the engine which track follows the current one, for gapless playback.
@@ -346,7 +368,7 @@ impl Player {
         }
     }
 
-    fn poll_position(&self) {
+    pub(super) fn poll_position(&self) {
         let mut position = None;
         self.with_backend(|backend| position = Some(backend.position()));
         if let Some(position) = position {

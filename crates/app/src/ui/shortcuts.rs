@@ -1,12 +1,12 @@
-//! Playback keyboard shortcuts.
+//! Keyboard shortcuts, and the dialog that lists them.
 //!
-//! These are handled by a key controller on the window rather than as application
-//! accelerators: GTK runs accelerators before the focused widget, which would make
-//! Space or Ctrl+← impossible to type in the search field. Here they are skipped
-//! whenever a text field with text in it, a dialog or a popover has the focus. Media
-//! keys always work.
+//! The playback ones are handled by a key controller on the window rather than as
+//! application accelerators: GTK runs accelerators before the focused widget, which
+//! would make Space or Ctrl+← impossible to type in the search field. Here they are
+//! skipped whenever a text field with text in it, a dialog or a popover has the focus.
+//! Media keys always work.
 
-use gtk::prelude::*;
+use adw::prelude::*;
 use gtk::{gdk, glib};
 
 /// The modifier of most shortcuts: Ctrl, like GTK's `<Primary>`.
@@ -30,6 +30,30 @@ const PLAYBACK_SHORTCUTS: &[(gdk::Key, gdk::ModifierType, &str)] = &[
     (gdk::Key::Down, PRIMARY, "app.volume-down"),
     (gdk::Key::s, PRIMARY, "app.toggle-shuffle"),
     (gdk::Key::r, PRIMARY, "app.cycle-repeat"),
+];
+
+/// Accelerators for actions that never conflict with typing, which the application
+/// installs.
+pub const ACCELERATORS: &[(&str, &[&str])] = &[
+    ("app.search", &["<Primary>f"]),
+    ("app.toggle-queue", &["<Primary>l"]),
+    ("app.preferences", &["<Primary>comma"]),
+    ("app.shortcuts", &["<Primary>question"]),
+    ("app.quit", &["<Primary>q"]),
+];
+
+/// Shortcuts that widgets handle themselves, for the dialog: a group's title, then
+/// what each does and its keys.
+const OTHER_SHORTCUTS: &[(&str, &[(&str, &str)])] = &[
+    ("General", &[("Back", "Esc / Alt+←"), ("Main Menu", "F10")]),
+    (
+        "Songs",
+        &[
+            ("Open a Song’s Menu", "Menu / Shift+F10"),
+            ("Move a Song in the Queue or a Playlist", "Alt+↑ / Alt+↓"),
+            ("Remove a Song from the Queue or a Playlist", "Delete"),
+        ],
+    ),
 ];
 
 /// Dedicated media keys, for platforms where no media-controls service takes them.
@@ -60,6 +84,97 @@ pub fn install(window: &gtk::Window) {
         }
     });
     window.add_controller(keys);
+}
+
+/// Opens the list of keyboard shortcuts over `parent`. The playback keys and the
+/// accelerators are listed from the tables that bind them.
+pub fn present(parent: &impl IsA<gtk::Widget>) {
+    let playback = adw::PreferencesGroup::builder().title("Playback").build();
+    for (key, modifiers, action) in PLAYBACK_SHORTCUTS {
+        playback.add(&row(action_title(action), &key_label(*key, *modifiers)));
+    }
+    let page = adw::PreferencesPage::new();
+    page.add(&playback);
+    for (title, shortcuts) in OTHER_SHORTCUTS {
+        let group = adw::PreferencesGroup::builder().title(*title).build();
+        for (does, keys) in *shortcuts {
+            group.add(&row(does, keys));
+        }
+        if *title == "General" {
+            for (action, accelerators) in ACCELERATORS {
+                let keys: Vec<String> = accelerators
+                    .iter()
+                    .filter_map(|accelerator| gtk::accelerator_parse(*accelerator))
+                    .map(|(key, modifiers)| key_label(key, modifiers))
+                    .collect();
+                group.add(&row(action_title(action), &keys.join(" / ")));
+            }
+        }
+        page.add(&group);
+    }
+
+    let view = adw::ToolbarView::new();
+    view.add_top_bar(&adw::HeaderBar::new());
+    view.set_content(Some(&page));
+    adw::Dialog::builder()
+        .title("Keyboard Shortcuts")
+        .content_width(460)
+        .child(&view)
+        .build()
+        .present(Some(parent));
+}
+
+/// One shortcut: what it does, and its keys at the end of the row.
+fn row(does: &str, keys: &str) -> adw::ActionRow {
+    let row = adw::ActionRow::builder().title(does).build();
+    if does == "Search" {
+        row.set_subtitle("Or just start typing");
+    }
+    let keys = gtk::Label::builder()
+        .label(keys)
+        .css_classes(["dim-label"])
+        .build();
+    row.add_suffix(&keys);
+    row
+}
+
+/// What the dialog calls an action that has a shortcut.
+fn action_title(action: &str) -> &'static str {
+    match action {
+        "app.play-pause" => "Play or Pause",
+        "app.next" => "Next Song",
+        "app.previous" => "Previous Song",
+        "app.volume-up" => "Volume Up",
+        "app.volume-down" => "Volume Down",
+        "app.toggle-shuffle" => "Shuffle On or Off",
+        "app.cycle-repeat" => "Repeat: Off, All, One",
+        "app.search" => "Search",
+        "app.toggle-queue" => "Show or Hide the Queue",
+        "app.preferences" => "Preferences",
+        "app.shortcuts" => "Keyboard Shortcuts",
+        "app.quit" => "Quit",
+        _ => "",
+    }
+}
+
+/// A shortcut as tooltips write it: "Space", "Ctrl+→", "Ctrl+S".
+fn key_label(key: gdk::Key, modifiers: gdk::ModifierType) -> String {
+    let name = match key {
+        gdk::Key::space => "Space".to_owned(),
+        gdk::Key::Right => "→".to_owned(),
+        gdk::Key::Left => "←".to_owned(),
+        gdk::Key::Up => "↑".to_owned(),
+        gdk::Key::Down => "↓".to_owned(),
+        key => key.to_unicode().map_or_else(
+            || key.name().map(String::from).unwrap_or_default(),
+            |character| character.to_uppercase().collect(),
+        ),
+    };
+    if modifiers.contains(PRIMARY) {
+        primary(&name)
+    } else {
+        name
+    }
 }
 
 /// The action for a key press. `focus_wants_keys` is only asked about shortcuts
@@ -122,5 +237,27 @@ mod tests {
             action_for(gdk::Key::AudioNext, none, || true),
             Some("app.next")
         );
+    }
+
+    #[test]
+    fn every_shortcut_is_listed_by_name_and_keys() {
+        let playback = PLAYBACK_SHORTCUTS.iter().map(|(_, _, action)| action);
+        let accelerators = ACCELERATORS.iter().map(|(action, _)| action);
+        for action in playback.chain(accelerators) {
+            assert!(!action_title(action).is_empty(), "{action} has no title");
+        }
+        let labels: Vec<String> = PLAYBACK_SHORTCUTS
+            .iter()
+            .map(|(key, modifiers, _)| key_label(*key, *modifiers))
+            .collect();
+        assert_eq!(
+            labels,
+            [
+                "Space", "Ctrl+→", "Ctrl+←", "Ctrl+↑", "Ctrl+↓", "Ctrl+S", "Ctrl+R"
+            ]
+        );
+        assert_eq!(key_label(gdk::Key::comma, PRIMARY), "Ctrl+,");
+        assert_eq!(key_label(gdk::Key::question, PRIMARY), "Ctrl+?");
+        assert_eq!(key_label(gdk::Key::F10, gdk::ModifierType::empty()), "F10");
     }
 }

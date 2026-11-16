@@ -108,9 +108,22 @@ impl Player {
     /// other failure (the preloaded next track, or the current one breaking off) only
     /// changes what is preloaded: the engine moves on by itself, with the preloaded
     /// track or `EndOfQueue`, so advancing here as well would skip a track.
+    ///
+    /// The song brought back from the last run is the exception: if it can't be opened,
+    /// playback is simply stopped, with the queue as it was.
     pub(super) fn on_track_failed(&self, track: TrackId, message: &str) {
         log::warn!("Could not play track {}: {message}", track.0);
         let imp = self.imp();
+        if imp
+            .pending_load
+            .get()
+            .is_some_and(|pending| pending.restored && pending.track == track)
+        {
+            // Nobody asked for it to play, so there is nothing to report or skip.
+            imp.pending_load.set(None);
+            self.stop_playback();
+            return;
+        }
         imp.unplayable.borrow_mut().insert(track);
         let streak = imp.failure_streak.get() + 1;
         imp.failure_streak.set(streak);

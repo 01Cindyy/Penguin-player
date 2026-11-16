@@ -9,7 +9,7 @@ use std::thread;
 use lofty::config::ParseOptions;
 use lofty::tag::ItemKey;
 use mp_core::Lyrics;
-use mp_core::util::stable_hash;
+use mp_core::files::song_cache_key;
 
 use crate::chapter_limit::TAG_READER_STACK_BYTES;
 use crate::tags::{self, TagMode};
@@ -71,8 +71,7 @@ pub fn save_found_lyrics(
 }
 
 fn cached_file(cache_dir: &Path, song: &Path) -> PathBuf {
-    let key = stable_hash(song.as_os_str().as_encoded_bytes());
-    cache_dir.join(format!("{key:016x}.lrc"))
+    cache_dir.join(format!("{}.lrc", song_cache_key(song)))
 }
 
 fn lrc_file(song: &Path) -> Option<PathBuf> {

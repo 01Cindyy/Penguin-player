@@ -1,7 +1,9 @@
+use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
 use mp_core::Lyrics;
+use mp_core::files::{remove_cache_files_of_other_songs, song_cache_key};
 
 use super::fixtures::{TestLibrary, TestTags, write_wav};
 use crate::{read_found_lyrics, read_lyrics, save_found_lyrics};
@@ -133,6 +135,16 @@ fn found_lyrics_are_kept_in_the_cache() {
     // Only for this song, and never in place of its own lyrics.
     assert_eq!(read_found_lyrics(&cache, &lib.path("other.wav")), None);
     assert_eq!(read_lyrics(&song), None);
+
+    // They stay while the song is in the library, and go once it has left.
+    let library = HashSet::from([song_cache_key(&song)]);
+    assert_eq!(remove_cache_files_of_other_songs(&cache, &library), 0);
+    assert!(read_found_lyrics(&cache, &song).is_some());
+    assert_eq!(
+        remove_cache_files_of_other_songs(&cache, &HashSet::new()),
+        1
+    );
+    assert_eq!(read_found_lyrics(&cache, &song), None);
 }
 
 #[test]

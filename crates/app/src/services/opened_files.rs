@@ -51,6 +51,8 @@ pub fn open(ctx: &Rc<AppContext>, files: &[gio::File]) {
     if paths.is_empty() {
         return;
     }
+    // If the app was started to play these, they take the place of the last run's queue.
+    ctx.forget_session();
     let opening = LATEST.with(|latest| {
         latest.set(latest.get() + 1);
         latest.get()
@@ -207,6 +209,91 @@ mod tests {
         assert_eq!(
             known_id(&real.join("Album/song.flac"), &known, None, None),
             None
+        );
+    }
+}
+
+/// The launcher and the Windows installer each list the formats the app is offered
+/// for by hand. These keep the lists in step with what the app plays.
+#[cfg(test)]
+mod offered_formats {
+    use std::collections::BTreeSet;
+    use std::path::Path;
+
+    use mp_core::APP_ID;
+    use mp_core::format::SUPPORTED_EXTENSIONS;
+
+    /// Played, but not offered for: files with these extensions are usually videos.
+    const USUALLY_VIDEO: [&str; 2] = ["mp4", "webm"];
+
+    /// The type Linux desktops give files with `extension`, which the launcher must
+    /// list for the app to be offered for them. `None` where desktops know no type.
+    fn mime_type(extension: &str) -> Option<&'static str> {
+        Some(match extension {
+            "flac" => "audio/flac",
+            "mp3" => "audio/mpeg",
+            "m4a" | "mp4" => "audio/mp4",
+            "m4b" => "audio/x-m4b",
+            "aac" => "audio/aac",
+            "ogg" | "oga" | "opus" => "audio/ogg",
+            "wav" | "wave" => "audio/vnd.wave",
+            "aif" | "aiff" => "audio/x-aiff",
+            "aifc" => "audio/x-aifc",
+            "mka" => "audio/matroska",
+            "webm" => "audio/webm",
+            "caf" => return None,
+            other => panic!("no type for .{other}: add it here and to the .desktop file"),
+        })
+    }
+
+    fn repository_file(path: &str) -> String {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(path);
+        std::fs::read_to_string(&path).unwrap_or_else(|err| panic!("{}: {err}", path.display()))
+    }
+
+    #[test]
+    fn the_launcher_lists_the_formats_the_app_plays() {
+        let launcher = repository_file(&format!("data/{APP_ID}.desktop"));
+        let listed: BTreeSet<&str> = launcher
+            .lines()
+            .find_map(|line| line.strip_prefix("MimeType="))
+            .expect("the launcher lists MIME types")
+            .split_terminator(';')
+            .collect();
+        for extension in SUPPORTED_EXTENSIONS {
+            if let Some(mime_type) = mime_type(extension) {
+                assert!(listed.contains(mime_type), ".{extension}: {mime_type}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_windows_installer_lists_the_formats_the_app_plays() {
+        let installer = repository_file("../../packaging/windows/penguin-player.iss");
+        let extensions_between = |before: &str, after: &str| -> BTreeSet<&str> {
+            installer
+                .lines()
+                .filter_map(|line| line.split_once(before)?.1.split_once(after))
+                .map(|(extension, _)| extension)
+                .collect()
+        };
+        let offered: BTreeSet<&str> = SUPPORTED_EXTENSIONS
+            .iter()
+            .copied()
+            .filter(|extension| !USUALLY_VIDEO.contains(extension))
+            .collect();
+        assert_eq!(
+            extensions_between(r"Software\Classes\.", r"\OpenWithProgids"),
+            offered,
+            "Open With"
+        );
+        assert_eq!(
+            extensions_between(
+                r#"FileAssociations"; ValueType: string; ValueName: "."#,
+                "\""
+            ),
+            offered,
+            "Default Apps"
         );
     }
 }

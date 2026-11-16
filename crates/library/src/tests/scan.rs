@@ -21,6 +21,42 @@ fn album_tags(title: &'static str, track: &'static str) -> TestTags {
     }
 }
 
+/// The database keeps the tags as they are; what the folder implies is worked out
+/// each time the tracks are loaded, so it follows the files as they come and go.
+#[test]
+fn albums_by_several_artists_are_filed_under_one_album_artist() {
+    let mut lib = TestLibrary::new();
+    let song = |title: &'static str, artist: &'static str, track: &'static str| TestTags {
+        title,
+        artist,
+        album: "Harbour Lights",
+        track,
+        ..TestTags::default()
+    };
+    write_wav(
+        &lib.path("Harbour Lights/01.wav"),
+        &song("First", "Nova Static", "1"),
+    );
+    let second = lib.path("Harbour Lights/02.wav");
+    write_wav(&second, &song("Second", "Harbor & Pine", "2"));
+    lib.scan();
+
+    let tracks = lib.library.tracks().unwrap();
+    let titles: Vec<&str> = tracks.iter().map(|track| track.title.as_str()).collect();
+    assert_eq!(titles, ["First", "Second"], "in album order");
+    assert!(
+        tracks
+            .iter()
+            .all(|track| track.album_artist == "Various Artists")
+    );
+    let stored = lib.library.track(tracks[0].id).unwrap().unwrap();
+    assert_eq!(stored.album_artist, "");
+
+    fs::remove_file(&second).unwrap();
+    lib.scan();
+    assert_eq!(lib.library.tracks().unwrap()[0].album_artist, "");
+}
+
 #[test]
 fn first_scan_reads_tags_and_properties() {
     let mut lib = TestLibrary::new();

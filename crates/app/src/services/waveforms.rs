@@ -14,7 +14,7 @@ use gtk::glib;
 use gtk::glib::prelude::*;
 use gtk::glib::subclass::prelude::*;
 use mp_audio::{WAVEFORM_POINTS, analyse_waveform};
-use mp_core::util::stable_hash;
+use mp_core::files::song_cache_key;
 use mp_core::{AppPaths, Track};
 
 /// A cache file's size and modification time fields, before the waveform itself.
@@ -144,10 +144,7 @@ impl Stamp {
 /// Runs on GIO's blocking pool: the song's waveform from the cache, or else measured and
 /// saved for next time. `None` if it was cancelled or can't be measured.
 fn load(dir: &Path, song: &Path, stamp: Stamp, cancelled: &AtomicBool) -> Option<Vec<u8>> {
-    let file = dir.join(format!(
-        "{:016x}",
-        stable_hash(song.as_os_str().as_encoded_bytes())
-    ));
+    let file = dir.join(song_cache_key(song));
     if let Some(levels) = read_cached(&file, stamp) {
         return Some(levels);
     }

@@ -1,10 +1,14 @@
 //! Reading files from folders that may contain anything, such as user themes and
 //! plugins: only regular files, within a size limit, and never outside their folder.
+//! Also writing the app's own files so a crash can't damage them.
 
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
+
+use crate::util::stable_hash;
 
 /// Reads a regular file of at most `max_bytes`. Anything else is refused before it is
 /// opened: a FIFO would block the reading thread, and a device could be endless. A
@@ -54,6 +58,52 @@ pub fn file_inside(dir: &Path, relative: &Path) -> Option<PathBuf> {
     let path = dir.join(relative).canonicalize().ok()?;
     let root = dir.canonicalize().ok()?;
     (path.starts_with(&root) && path.is_file()).then_some(path)
+}
+
+/// Replaces the file at `path` with `contents` so that a crash or a power cut leaves
+/// the old file or the new one, never a partly written or empty one. The contents go
+/// to `<path>.tmp`, are flushed to the disk, and only then take the file's place:
+/// without the flush, some filesystems record the rename before the contents.
+pub fn write_atomically(path: &Path, contents: &[u8]) -> io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut temp = path.as_os_str().to_owned();
+    temp.push(".tmp");
+    let mut file = File::create(&temp)?;
+    file.write_all(contents)?;
+    file.sync_all()?;
+    drop(file);
+    std::fs::rename(&temp, path)
+}
+
+/// What the files kept in a cache for the song at `path` are named: 16 hex digits made
+/// from the path, with any extension, so they are found again without a list of names.
+pub fn song_cache_key(path: &Path) -> String {
+    format!("{:016x}", stable_hash(path.as_os_str().as_encoded_bytes()))
+}
+
+/// Deletes the files in the cache folder `dir` that are named after songs (see
+/// [`song_cache_key`]) other than those with `keys`: songs that have left the library.
+/// Files named any other way are left alone. Returns how many were deleted.
+pub fn remove_cache_files_of_other_songs(dir: &Path, keys: &HashSet<String>) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let key = name.to_str().and_then(|name| name.split('.').next());
+        let outdated = key.is_some_and(|key| {
+            key.len() == 16
+                && key.bytes().all(|byte| byte.is_ascii_hexdigit())
+                && !keys.contains(key)
+        });
+        if outdated && std::fs::remove_file(entry.path()).is_ok() {
+            removed += 1;
+        }
+    }
+    removed
 }
 
 /// Whether a file or folder name is hidden, by the Unix convention of a leading dot.
@@ -115,6 +165,56 @@ mod tests {
             std::os::unix::fs::symlink(&absolute, dir.join("link.css")).unwrap();
             assert_eq!(file_inside(&dir, Path::new("link.css")), None);
         }
+    }
+
+    #[test]
+    fn atomic_writes_replace_the_file_and_leave_nothing_behind() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("new folder/settings.json");
+        write_atomically(&path, b"first").unwrap();
+        write_atomically(&path, b"second").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"second");
+        let names: Vec<_> = std::fs::read_dir(path.parent().unwrap())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["settings.json"]);
+    }
+
+    #[test]
+    fn cache_files_of_songs_that_left_are_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let kept = song_cache_key(Path::new("/music/kept.flac"));
+        let gone = song_cache_key(Path::new("/music/gone.flac"));
+        assert_eq!(kept.len(), 16);
+        assert_ne!(kept, gone);
+        let names = [
+            kept.clone(),
+            format!("{kept}.lrc"),
+            gone.clone(),
+            format!("{gone}.lrc"),
+            format!("{gone}.lrc.tmp"),
+            "notes.txt".to_owned(),
+        ];
+        for name in &names {
+            std::fs::write(dir.path().join(name), "").unwrap();
+        }
+
+        let keys = HashSet::from([kept.clone()]);
+        assert_eq!(remove_cache_files_of_other_songs(dir.path(), &keys), 3);
+        let mut left: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+            .collect();
+        left.sort();
+        assert_eq!(
+            left,
+            [kept.clone(), format!("{kept}.lrc"), "notes.txt".to_owned()]
+        );
+        assert_eq!(
+            remove_cache_files_of_other_songs(&dir.path().join("missing"), &keys),
+            0
+        );
     }
 
     #[test]

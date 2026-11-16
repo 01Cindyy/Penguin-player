@@ -27,9 +27,10 @@ Everything is built in a rootless Podman container with Debian 13 (`Containerfil
 the oldest distribution with the GTK and libadwaita the app needs, so the program runs
 on it and on anything newer, whichever distribution builds it. A program built on a
 newer system, such as Arch, needs a newer glibc and would not start on those. The
-build environment is pinned: the Rust image by checksum, cargo-about by version and
-the AppImage runtime by release and checksum. The source folder is mounted read-only,
-and the build has no network once the crates are downloaded.
+build environment is pinned: the Rust image by checksum, cargo-about and cargo-audit
+by version and the AppImage runtime by release and checksum. The source folder is
+mounted read-only, and the build has no network once the crates are downloaded and
+checked.
 
 `build.sh` needs only `podman`, and no administrator rights. The build environment is
 made the first time (about ten minutes) and reused after that; `podman system reset`
@@ -50,9 +51,23 @@ The AppImage holds only the app: GTK and libadwaita come from the system it runs
 licence stops the build until that licence is checked and added; `about.hbs` lays out
 the notice.
 
+Before building, `build.sh` runs [cargo-audit](https://rustsec.org), which looks up
+every crate in `Cargo.lock` in the RustSec advisory database. A crate with a known
+vulnerability stops the build. `cargo update -p <crate>` usually brings the fixed
+version. If there is none yet and the problem can't reach the app, list the advisory
+in `.cargo/audit.toml` to build anyway, with a note saying why:
+
+```toml
+[advisories]
+ignore = ["RUSTSEC-0000-0000"]
+```
+
 ## Making a release
 
-1. Set the version in `Cargo.toml` (`[workspace.package]`) and run `cargo update -w`.
+1. Set the version in `Cargo.toml` (`[workspace.package]`) and run `cargo update`. It
+   brings every crate to its newest compatible version, which is how fixes in what the
+   program is built with (SQLite, Lua, the audio decoders, HTTPS and its certificates)
+   reach a release. Then run `cargo test --workspace` and play something.
 2. Add a `<release>` with the version and date at the top of the releases in
    `crates/app/data/io.github._01cindyy.Penguin_player.metainfo.xml`.
 3. Run `packaging/build.sh`, and commit `THIRD-PARTY-LICENSES.txt` if it changed. It

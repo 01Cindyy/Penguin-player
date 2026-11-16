@@ -117,6 +117,69 @@ impl PlayQueue {
         self.order.iter().map(|&index| self.items[index]).collect()
     }
 
+    /// Every track in the order they were added, which is the play order unless
+    /// shuffled. With [`Self::shuffled_order`] and [`Self::position`], it is what
+    /// [`Self::restore`] needs to bring the queue back on a later run.
+    pub fn items(&self) -> &[TrackId] {
+        &self.items
+    }
+
+    /// The play order as indices into [`Self::items`] while shuffled. Empty while not,
+    /// when it is simply their order.
+    pub fn shuffled_order(&self) -> &[usize] {
+        if self.shuffle { &self.order } else { &[] }
+    }
+
+    /// Fills the queue with what an earlier run had in it: `items`, `order` and
+    /// `current` as [`Self::items`], [`Self::shuffled_order`] and [`Self::position`]
+    /// gave them then. Tracks that have left the library since are `None`, and are
+    /// dropped; if the current track is one of them, the next one left in play order
+    /// takes its place. Returns whether the current track is the one it was.
+    pub fn restore(
+        &mut self,
+        items: Vec<Option<TrackId>>,
+        order: Vec<usize>,
+        current: usize,
+    ) -> bool {
+        let len = items.len();
+        let mut seen = vec![false; len];
+        let fits = order.len() == len
+            && order
+                .iter()
+                .all(|&index| index < len && !std::mem::replace(&mut seen[index], true));
+        // Not shuffled, or the order isn't one of these items (a damaged file).
+        let order = if fits { order } else { (0..len).collect() };
+
+        // Where each item that stays ends up among the items.
+        let mut places = 0..;
+        let renumbered: Vec<Option<usize>> = items
+            .iter()
+            .map(|item| item.and_then(|_| places.next()))
+            .collect();
+        self.items = items.into_iter().flatten().collect();
+        self.order = Vec::with_capacity(self.items.len());
+        self.cursor = None;
+        let mut same_track = false;
+        for (position, index) in order.into_iter().enumerate() {
+            let Some(index) = renumbered[index] else {
+                continue;
+            };
+            if position >= current && self.cursor.is_none() {
+                self.cursor = Some(self.order.len());
+                same_track = position == current;
+            }
+            self.order.push(index);
+        }
+        // The current track and all after it were dropped: the last one left is.
+        self.cursor = self.cursor.or(self.order.len().checked_sub(1));
+        if !self.shuffle {
+            // Shuffle was turned off since: the tracks stay in the order they played in.
+            self.items = self.order.iter().map(|&index| self.items[index]).collect();
+            self.order = (0..self.items.len()).collect();
+        }
+        same_track
+    }
+
     /// Tracks after the current one, in play order.
     pub fn upcoming(&self) -> impl Iterator<Item = TrackId> + '_ {
         let start = self.cursor.map_or(self.order.len(), |cursor| cursor + 1);
@@ -364,6 +427,97 @@ mod tests {
             items.sort();
             items
         }
+    }
+
+    /// A new queue with what `queue` would keep for a later run, leaving out `dropped`.
+    fn restored(queue: &PlayQueue, shuffle: bool, dropped: &[i64]) -> (PlayQueue, bool) {
+        let items = queue
+            .items()
+            .iter()
+            .map(|track| (!dropped.contains(&track.0)).then_some(*track))
+            .collect();
+        let order = queue.shuffled_order().to_vec();
+        let mut later = PlayQueue::with_seed(shuffle, queue.repeat(), 1);
+        let same_track = later.restore(items, order, queue.position().unwrap_or(0));
+        (later, same_track)
+    }
+
+    #[test]
+    fn a_queue_comes_back_as_it_was() {
+        let mut q = queue(5, false, RepeatMode::Off);
+        q.jump_to(3);
+        let (later, same_track) = restored(&q, false, &[]);
+        assert!(same_track);
+        assert_eq!(later.tracks(), q.tracks());
+        assert_eq!(later.current(), Some(TrackId(3)));
+
+        let mut q = queue(6, true, RepeatMode::All);
+        q.jump_to(2);
+        let (mut later, same_track) = restored(&q, true, &[]);
+        assert!(same_track);
+        assert_eq!(later.tracks(), q.tracks());
+        assert_eq!(later.current(), q.current());
+        // Turning shuffle off still finds the order the tracks were added in.
+        later.set_shuffle(false);
+        assert_eq!(later.tracks(), ids(0..6));
+        assert_eq!(later.current(), q.current());
+    }
+
+    #[test]
+    fn tracks_that_left_the_library_are_dropped_from_a_restored_queue() {
+        let mut q = queue(5, false, RepeatMode::Off);
+        q.jump_to(2);
+        let (later, same_track) = restored(&q, false, &[0, 4]);
+        assert!(same_track);
+        assert_eq!(later.tracks(), ids(1..4));
+        assert_eq!(later.current(), Some(TrackId(2)));
+
+        // Without the current track, the one after it is current.
+        let (later, same_track) = restored(&q, false, &[2]);
+        assert!(!same_track);
+        assert_eq!(later.current(), Some(TrackId(3)));
+        let (later, same_track) = restored(&q, false, &[2, 3, 4]);
+        assert!(!same_track);
+        assert_eq!(later.current(), Some(TrackId(1)));
+        let (later, same_track) = restored(&q, false, &[0, 1, 2, 3, 4]);
+        assert!(!same_track && later.is_empty() && later.position().is_none());
+
+        let mut q = queue(6, true, RepeatMode::Off);
+        q.jump_to(3);
+        let current = q.current().unwrap();
+        let gone = q.get(1).unwrap();
+        let left: Vec<TrackId> = q.tracks().into_iter().filter(|&id| id != gone).collect();
+        let (later, same_track) = restored(&q, true, &[gone.0]);
+        assert!(same_track);
+        assert_eq!(later.tracks(), left);
+        assert_eq!(later.current(), Some(current));
+        assert!(is_permutation(&later));
+    }
+
+    #[test]
+    fn a_restored_queue_fits_the_shuffle_setting_and_survives_a_damaged_order() {
+        // Shuffled when it was kept, but shuffle is off now.
+        let mut q = queue(5, true, RepeatMode::Off);
+        q.jump_to(1);
+        let (mut later, same_track) = restored(&q, false, &[]);
+        assert!(same_track);
+        assert_eq!(later.tracks(), q.tracks());
+        assert_eq!(later.items(), q.tracks());
+        assert!(later.shuffled_order().is_empty());
+        later.play_next(&[TrackId(9)]);
+        assert_eq!(later.get(2), Some(TrackId(9)));
+
+        for order in [vec![0, 0, 1], vec![0, 1], vec![0, 1, 7]] {
+            let mut later = PlayQueue::with_seed(true, RepeatMode::Off, 1);
+            let items = ids(0..3).into_iter().map(Some).collect();
+            assert!(later.restore(items, order, 1));
+            assert_eq!(later.tracks(), ids(0..3));
+            assert_eq!(later.current(), Some(TrackId(1)));
+        }
+        let mut later = PlayQueue::default();
+        let items = ids(0..2).into_iter().map(Some).collect();
+        assert!(!later.restore(items, Vec::new(), 9));
+        assert_eq!(later.current(), Some(TrackId(1)));
     }
 
     #[test]

@@ -15,12 +15,13 @@ mod types;
 mod tests;
 
 use std::rc::Rc;
+use std::time::Duration;
 
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use mp_audio::{AudioEngine, EngineConfig, EngineEvent};
-use mp_core::{PlaybackState, PlayerCommand, PlayerEvent, RepeatMode, Settings, TrackId};
+use mp_core::{PlaybackState, PlayerCommand, PlayerEvent, RepeatMode, Session, Settings, TrackId};
 
 pub use backend::PlaybackBackend;
 pub use types::{PlayerRepeat, PlayerState};
@@ -253,6 +254,47 @@ impl Player {
         }
         self.imp().queue.borrow_mut().clear_upcoming();
         self.sync_next();
+        self.emit_queue_changed();
+    }
+
+    /// The queue and the place in it, for [`Self::restore_session`] on a later run.
+    pub fn session(&self) -> Session {
+        if self.state() == PlayerState::Playing {
+            self.poll_position();
+        }
+        let queue = self.imp().queue.borrow();
+        let path = |id: &TrackId| Some(self.store().track(*id)?.track().path.clone());
+        Session {
+            songs: queue.items().iter().map(path).collect(),
+            order: queue.shuffled_order().to_vec(),
+            current: queue.position().unwrap_or(0),
+            position_ms: self.position(),
+        }
+    }
+
+    /// Brings back the queue of an earlier run, with its current song ready where
+    /// playback was, but not playing. Songs that are no longer in the library are
+    /// left out. If the current song can't be opened, the queue still comes back, for
+    /// when it can. Does nothing if something is queued already.
+    pub fn restore_session(&self, session: Session) {
+        if self.queue_len() > 0 {
+            return;
+        }
+        let library = self.store().track_paths();
+        let items = session
+            .songs
+            .iter()
+            .map(|song| library.get(song.as_ref()?).copied())
+            .collect();
+        let same_track =
+            self.imp()
+                .queue
+                .borrow_mut()
+                .restore(items, session.order, session.current);
+        let current = self.imp().queue.borrow().current();
+        let Some(track) = current else { return };
+        let position = if same_track { session.position_ms } else { 0 };
+        self.load_restored(track, Duration::from_millis(position));
         self.emit_queue_changed();
     }
 

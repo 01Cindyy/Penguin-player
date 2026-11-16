@@ -217,7 +217,7 @@ tag; number fields are `nil` when unknown.
 | `title` | string | `"So What"` (never empty: falls back to the file name) |
 | `artist` | string | `"Miles Davis"` |
 | `album` | string | `"Kind of Blue"` |
-| `album_artist` | string | `""` |
+| `album_artist` | string | `""`, or `"Various Artists"` where the app worked it out for an album by several artists |
 | `genre` | string | `"Jazz"` |
 | `year` | integer or nil | `1959` |
 | `track_number` | integer or nil | `1` |

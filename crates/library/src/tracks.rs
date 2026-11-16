@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use mp_core::collection::library_order;
+use mp_core::collection::{infer_album_artists, library_order};
 use mp_core::{AudioFormat, CoverId, Track, TrackId};
 use rusqlite::{Connection, OptionalExtension, Row, named_params};
 
@@ -70,12 +70,14 @@ pub(crate) struct StoredFile {
     pub cover: Option<CoverId>,
 }
 
-/// Every track in the library's default order (see [`library_order`]).
+/// Every track in the library's default order (see [`library_order`]), with the album
+/// artists that folders imply filled in (see [`infer_album_artists`]).
 pub(crate) fn all(conn: &Connection) -> Result<Vec<Track>> {
     let mut statement = conn.prepare_cached(SELECT_TRACKS)?;
     let mut tracks = statement
         .query_map([], track_from_row)?
         .collect::<rusqlite::Result<Vec<_>>>()?;
+    infer_album_artists(&mut tracks);
     tracks.sort_by_cached_key(library_order);
     Ok(tracks)
 }

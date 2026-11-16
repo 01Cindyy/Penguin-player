@@ -39,6 +39,8 @@ pub struct LibraryWatcher {
     messages: Sender<Message>,
     /// Set once the folder itself was deleted or moved away.
     stopped: Arc<AtomicBool>,
+    /// Set once the system's limit on watched folders kept a folder from being watched.
+    limited: Arc<AtomicBool>,
 }
 
 enum Message {
@@ -75,7 +77,8 @@ impl LibraryWatcher {
             notify::Config::default(),
         )
         .map_err(watch_error)?;
-        watch_folders(&mut watcher, &root).map_err(watch_error)?;
+        let limited = Arc::new(AtomicBool::new(false));
+        watch_folders(&mut watcher, &root, &limited).map_err(watch_error)?;
         let root_check = if reports_root_going() {
             None
         } else {
@@ -88,6 +91,7 @@ impl LibraryWatcher {
             root: WatchedRoot::new(root),
             root_check,
             stopped: stopped.clone(),
+            limited: limited.clone(),
             on_change: Box::new(on_change),
             pending: Vec::new(),
             seen: HashSet::new(),
@@ -97,13 +101,24 @@ impl LibraryWatcher {
             .name("library watcher".into())
             .spawn(move || batcher.run(&received))
             .map_err(|error| LibraryError::Watch(error.to_string()))?;
-        Ok(Self { messages, stopped })
+        Ok(Self {
+            messages,
+            stopped,
+            limited,
+        })
     }
 
     /// Whether changes are still being followed: false once the folder itself has been
     /// deleted or moved away, after that was reported.
     pub fn is_watching(&self) -> bool {
         !self.stopped.load(Ordering::Relaxed)
+    }
+
+    /// Whether the system's limit on watched folders was reached (Linux counts them per
+    /// user, across all apps). The folders from there on aren't watched: changes in
+    /// them are found by the next scan.
+    pub fn is_limited(&self) -> bool {
+        self.limited.load(Ordering::Relaxed)
     }
 }
 
@@ -137,25 +152,42 @@ fn reports_root_going() -> bool {
 
 /// Watches `dir` and the folders below it that scans look into. Fails only if `dir`
 /// itself can't be watched; subfolders that can't be are skipped with a warning.
-fn watch_folders(watcher: &mut RecommendedWatcher, dir: &Path) -> notify::Result<()> {
+/// `limited` is set if the system's limit on watched folders was what stopped one.
+fn watch_folders(
+    watcher: &mut RecommendedWatcher,
+    dir: &Path,
+    limited: &AtomicBool,
+) -> notify::Result<()> {
     if !watches_each_folder() {
         return watcher.watch(dir, RecursiveMode::Recursive);
     }
-    for (index, folder) in visible_folders(dir).enumerate() {
-        match watcher.watch(&folder, RecursiveMode::NonRecursive) {
-            Ok(()) => {}
-            Err(error) if index == 0 => return Err(error),
-            Err(error) if matches!(error.kind, notify::ErrorKind::MaxFilesWatch) => {
-                log::warn!(
-                    "Watching only part of {}: {error}. Raising the system's limit on \
-                     watched folders lets the rest be watched too.",
-                    dir.display()
-                );
-                break;
-            }
-            Err(error) => {
-                log::warn!("Not watching {} for changes: {error}", folder.display());
-            }
+    watch_each(visible_folders(dir), limited, |folder| {
+        watcher.watch(folder, RecursiveMode::NonRecursive)
+    })
+}
+
+/// Calls `watch` for each of `folders`, the first of which is the one the others are in.
+fn watch_each(
+    folders: impl Iterator<Item = PathBuf>,
+    limited: &AtomicBool,
+    mut watch: impl FnMut(&Path) -> notify::Result<()>,
+) -> notify::Result<()> {
+    for (index, folder) in folders.enumerate() {
+        let Err(error) = watch(&folder) else { continue };
+        let limit_reached = matches!(error.kind, notify::ErrorKind::MaxFilesWatch);
+        if limit_reached {
+            limited.store(true, Ordering::Relaxed);
+        }
+        if index == 0 {
+            return Err(error);
+        }
+        log::warn!("Not watching {} for changes: {error}", folder.display());
+        if limit_reached {
+            log::warn!(
+                "Nor the folders after it. Raising the system's limit on watched folders \
+                 lets them be watched too."
+            );
+            break;
         }
     }
     Ok(())
@@ -181,6 +213,7 @@ struct Batcher {
     /// Until the folder has gone, where notify wouldn't say so.
     root_check: Option<RootCheck>,
     stopped: Arc<AtomicBool>,
+    limited: Arc<AtomicBool>,
     on_change: Box<dyn Fn(Vec<PathBuf>) + Send>,
     /// The events of the batch being collected, each once.
     pending: Vec<Event>,
@@ -244,7 +277,7 @@ impl Batcher {
         else {
             return;
         };
-        if let Err(error) = watch_folders(&mut self.watcher, folder) {
+        if let Err(error) = watch_folders(&mut self.watcher, folder, &self.limited) {
             log::warn!("Not watching {} for changes: {error}", folder.display());
         }
     }
@@ -439,6 +472,37 @@ mod tests {
     }
 
     #[test]
+    fn the_watch_limit_stops_at_the_first_folder_it_refuses() {
+        let folders = || ["music", "music/a", "music/b", "music/c"].map(PathBuf::from);
+        let limit = || notify::Error::new(notify::ErrorKind::MaxFilesWatch);
+        let limited = AtomicBool::new(false);
+        let mut tried = Vec::new();
+        let result = watch_each(folders().into_iter(), &limited, |folder| {
+            tried.push(folder.to_path_buf());
+            match folder.to_str() {
+                Some("music/a") => Err(notify::Error::generic("permission denied")),
+                Some("music/b") => Err(limit()),
+                _ => Ok(()),
+            }
+        });
+        assert!(result.is_ok());
+        assert_eq!(tried, folders()[..3], "a was skipped, b ended it");
+        assert!(limited.load(Ordering::Relaxed));
+
+        let limited = AtomicBool::new(false);
+        let unreadable = watch_each(folders().into_iter(), &limited, |folder| {
+            if folder.ends_with("a") {
+                Err(notify::Error::generic("permission denied"))
+            } else {
+                Ok(())
+            }
+        });
+        assert!(unreadable.is_ok() && !limited.load(Ordering::Relaxed));
+        let nothing_watched = watch_each(folders().into_iter(), &limited, |_| Err(limit()));
+        assert!(nothing_watched.is_err());
+    }
+
+    #[test]
     fn root_check_notices_the_folder_going_or_being_replaced() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join("music");
@@ -479,6 +543,7 @@ mod tests {
             root: WatchedRoot::new(root.clone()),
             root_check: RootCheck::new(&root),
             stopped: stopped.clone(),
+            limited: Arc::default(),
             on_change: Box::new(move |paths| {
                 let _ = sender.send(paths);
             }),
