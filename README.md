@@ -4,9 +4,9 @@
 
 # Penguin Player
 
-**Your music library, offline and in full quality, on Linux and Windows.**
+**A clean, fast and beautiful offline music player, built for Linux and Windows.**
 
-A native player written in Rust for the music files you already have. Point it at a folder to browse, search and play your library, with nothing going online.
+A native music player written in Rust, for playing music files offline. It's for anyone who wants an aesthetically pleasing but functional music player.
 
 [![Latest release](https://img.shields.io/github/v/release/01Cindyy/Penguin-player)](https://github.com/01Cindyy/Penguin-player/releases/latest)
 [![AUR](https://img.shields.io/aur/version/penguin-player)](https://aur.archlinux.org/packages/penguin-player)
@@ -18,19 +18,16 @@ A native player written in Rust for the music files you already have. Point it a
 
 ## Features
 
-- **Library and supported formats**: FLAC, ALAC, WAV, AIFF, MP3, AAC, Opus and Ogg Vorbis,
-  scanned from a folder and kept up to date as it changes.
+- **Library and supported formats**: FLAC, ALAC, WAV, AIFF, MP3, AAC, Opus and Ogg Vorbis.
 - **Browse and search**: songs, albums, artists and formats, with search as you type.
-- **Playback**: gapless, in full quality, with shuffle, repeat and a queue you can
-  reorder by dragging.
-- **Open With**: play songs straight from your file manager, whether or not they're in
-  your library.
+- **Playback**: gapless, full quality playback, shuffle, repeat and a reorderable queue.
+- **Open With**: open songs from your file manager, regardless if they're in
+  your library or not.
 - **Now Playing**: the song fills the window over a blur of its art.
 - **Lyrics**: timed lyrics from your files' tags or `.lrc` files follow the song.
 - **Playlists** that keep track of songs whose files went missing, shown with their songs'
   covers or an image of your own.
-- **Visualiser**: bars that move with the music, in your theme's colour. Or use the song's
-  waveform as the seek bar.
+- **Visualiser**: in your theme's colour. Or use the song's waveform as the seek bar.
 - **Themes**: seventeen built in, plus your own and a Pywal theme that follows your
   wallpaper (see [pywal16](https://github.com/eylles/pywal16) for details); with extra
   options for corners, the visualiser and a translucent window.
@@ -173,7 +170,7 @@ place, so for now delete them yourself if you want them gone.
 
 ## Privacy
 
-Penguin Player doesn't go online. The only exceptions are plugins you switch on
+Penguin Player doesn't go online by default. The only exceptions are plugins you switch on
 yourself, and only to the sites they ask for and you allow. With Online Lyrics, the
 title, artist and album of a song are sent to LRCLIB when you open its lyrics; with
 Discord Status, what you're playing goes to the Discord app on your computer.
